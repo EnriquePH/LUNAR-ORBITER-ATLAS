@@ -100,9 +100,21 @@
 - [x] Revisión previa a la release: plano de recorte adaptativo (0,01 de lejos,
       como Plotly, para no perder precisión de profundidad), README y CHANGELOG
       reordenados, capturas de la web con el enlace a GitHub.
-- [x] Release 1.0.0: versión en `pyproject.toml`, `CITATION.cff`, README y
-      User-Agent; `CHANGELOG.md`; capturas de la web regeneradas; tag `v1.0.0`.
+- [x] Release 1.0.0 publicada el 2026-09-26: versión en `pyproject.toml`,
+      `CITATION.cff`, README y User-Agent; `CHANGELOG.md`; tag `v1.0.0` en
+      `8b16f1c`; release en GitHub con las notas del CHANGELOG
+      (<https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS/releases/tag/v1.0.0>).
+      CI (3.10 y 3.14) y Pages en verde.
 
 ## Pendiente
 
 - (nada abierto)
+
+## Ideas para después de 1.0.0 (sin compromiso)
+
+- Etiquetas: en la franja ecuatorial de la misión 1 se amontonan y sobre fotos
+  claras contrastan poco (probar contorno oscuro u ocultar las que se solapan).
+- De cerca (~17 km) la textura se ve borrosa: la foto seleccionada usa la vista
+  previa reducida a 256 px. Se podría cargar a más resolución al acercarse.
+- `image_at` y `patch_contains` ya no los usa la app (el click va por
+  `customdata`); decidir si se mantienen como API pública o van a `draft/`.

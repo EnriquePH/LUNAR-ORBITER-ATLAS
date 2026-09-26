@@ -4,7 +4,8 @@ Lunar Orbiter Atlas: visor local (Dash) de las fotos del archivo Lunar Orbiter d
 (<https://www.lpi.usra.edu/resources/lunarorbiter/>) sobre una esfera lunar 3D, con
 pestañas de datos de la Luna y del programa, en español e inglés.
 Repo: <https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS> · Licencia MIT, © ENERGYCODE.
-Tareas pendientes y hechas: [PLAN.md](PLAN.md).
+Versión 1.0.0 (publicada; notas en [CHANGELOG.md](CHANGELOG.md)). Tareas pendientes y
+hechas: [PLAN.md](PLAN.md).
 
 ## Comandos
 
@@ -31,7 +32,8 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   y `app.validation_layout`. El idioma viaja en `dcc.Store("lang")` como `State`.
   Dos callbacks clientside guardan la elección en `localStorage` y la recuperan
   si se entra sin `?lang=`; también fijan `<html lang>`.
-  Callbacks: `update_frame` (5 salidas), `render_globe`, `list_mission_frames` (arranca
+  Callbacks: `update_frame` (5 salidas), `render_globe` (4: figura, `focused-frame`,
+  `globe-camera`, `clicked-frame`), `list_mission_frames` (arranca
   el `LOADER`), `poll_mosaic` (Interval), `select_clicked_image` (el click solo
   selecciona la foto; **no la oculta**), `select_frame`, `select_random_frame`,
   `export_csv`, `export_geojson` (`dcc.Download`) y `remember_camera`. Se prueban
@@ -40,12 +42,16 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   usuario (`globe-camera`, desde `relayoutData`), así que redibujar no la mueve.
   Solo una selección nueva que no viene de un click (`clicked-frame`) gira hacia
   la foto conservando la distancia (`focus_camera`); `focused-frame` evita
-  repetir el giro al llegar teselas.
+  repetir el giro al llegar teselas. `remember_camera` también parchea la cámara
+  en la figura (`Patch`): al cambiar de pestaña el gráfico se desmonta y vuelve
+  desde su `figure`.
 - `orbiter/globe.py` — figura Plotly: esfera base, **todas las teselas en un único
   `Mesh3d`** (200 `Surface` congelan el navegador), foto seleccionada como `Surface`,
   marcador, etiqueta con el ID en el centro de cada foto (`_frame_labels`; la
-  seleccionada en naranja), contorno de fotos de gran altitud (>`HIGH_ALTITUDE_KM`), ecuador y polos
-  (`hoverinfo="skip"` para no robar clicks).
+  seleccionada en naranja; interruptor `show-labels`), contorno de fotos de gran
+  altitud (>`HIGH_ALTITUDE_KM`), ecuador y polos (`hoverinfo="skip"` para no
+  robar clicks). Radios: teselas 1,003–1,0054, seleccionada 1,006, etiquetas
+  1,008, marcador 1,009; la cámara no baja de 1,01 (`rotation.js`).
   **Proyección** (`frame_camera`): cámara estenopeica desde la posición de la nave hacia
   el punto principal; cada píxel es un rayo que corta la esfera (NaN si no la toca).
   Cámara según la vista previa (`camera_of`): `_med` → 80 mm, 55×65 mm; si no → 610 mm,
@@ -58,7 +64,8 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   Plotly colorea por vértice (1 píxel = 1 vértice): `tile_textures` reparte la
   resolución con un tope de `MESH_VERTEX_BUDGET`. El click selecciona la foto
   del hover: el `customdata` (ID por vértice) del `Mesh3d`, que va como
-  **lista** y no binario, porque Dash lo relee de la figura por índice. `image_at`/`patch_contains` (geometría) quedan como API pública.
+  **lista** y no binario, porque Dash lo relee de la figura por índice.
+  `image_at`/`patch_contains` (geometría) quedan como API pública sin uso en la app.
   `frame_geometry` (huella en km, emisión implícita) y `footprint_outline`
   buscan el limbo por bisección desde el punto principal (`_border_distances`):
   cerca del limbo la proyección es singular y una rejilla se queda corta.
@@ -67,8 +74,8 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   cierre por el polo si lo rodean).
 - `orbiter/catalog.py` — `MissionLoader` descarga en hilos todas las fotos de una
   misión; `TileStore` cachea página+miniatura en `data/lpi/` (escritura atómica,
-  sin caducidad: se recarga borrando la carpeta; `metadata()` lee el JSON sin descargar), 3 workers con un límite
-  compartido de 4 peticiones/s.
+  sin caducidad: se recarga borrando la carpeta; `metadata()` lee el JSON sin
+  descargar), 3 workers con un límite compartido de 4 peticiones/s.
 - `orbiter/lpi.py` — cliente y parser del LPI; el parser devuelve `FrameMetadata`
   (`TypedDict`). Errores como `LpiError(key, **params)` que la app traduce con
   `describe_error`. `clear_cache()` vacía las `lru_cache` (lo usa `conftest.py`).
@@ -97,7 +104,9 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - `site/` — página estática del proyecto para GitHub Pages (`pages.yml` la publica;
   en GitHub: Settings → Pages → Source: GitHub Actions). HTML bilingüe con
   `data-l="en|es"` y `assets/site.js`; capturas en `site/assets/screens/` (WebP).
-  No puede ejecutar la app (necesita servidor Python).
+  No puede ejecutar la app (necesita servidor Python). Las capturas `atlas`,
+  `mission-4` y `mobile` se regeneran con `draft/scripts/site_screenshots.py`
+  (CDP, local: `draft/` no está en git) y se pasan a WebP calidad 82.
 
 ## Convenciones
 
@@ -125,3 +134,18 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - En Chromium headless (render por software) los clicks 3D de Plotly fallan a veces:
   tras mover el ratón espera ~1 s y comprueba que el click se registró antes de
   medir tiempos.
+- Para manejar la UI por CDP: `window.dash_clientside.set_props(id, {...})` cambia
+  misión, fotograma o pestaña sin clicks; un click en una foto se simula con
+  `set_props('globe', {clickData: {points: [{customdata: ID}]}})`. El hover 3D se
+  dibuja en `#globe g.hovertext`, no en `.hoverlayer`. Con la misión 4 espera a que
+  termine el redibujado (varios segundos) antes de leer el hover.
+
+## Release
+
+1. Sube la versión en `pyproject.toml`, `CITATION.cff` (`version`,
+   `date-released`), la cita del README y `USER_AGENT` en `orbiter/lpi.py`.
+2. Añade la sección en `CHANGELOG.md`; `make check` y `make lint-md`.
+3. Regenera las capturas de la web si cambió la UI.
+4. Commit, `git tag -a vX.Y.Z`, `git push origin main vX.Y.Z`; espera la CI y
+   `gh release create vX.Y.Z --notes-file` con la sección del CHANGELOG.
+   Un tag ya publicado no se mueve: los arreglos van en una versión nueva.
