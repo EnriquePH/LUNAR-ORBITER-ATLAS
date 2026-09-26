@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: >-
+  If you use Lunar Orbiter Atlas in research, teaching, or other work, please
+  cite this software using the metadata below.
+title: Lunar Orbiter Atlas
+abstract: >-
+  A local application that displays photographs from the NASA Lunar Orbiter
+  missions on an interactive 3D Moon, using images and metadata from the Lunar
+  and Planetary Institute archive.
+authors:
+  - name: ENERGYCODE
+version: 0.1.0
+date-released: 2026-09-26
+url: https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS
+license: MIT

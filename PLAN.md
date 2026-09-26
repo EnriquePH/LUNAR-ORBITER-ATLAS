@@ -27,14 +27,21 @@
       `urls.py` construye sin validar; Ruff `D` con convención Google.
 - [x] Idioma recordado entre visitas (`localStorage`) y atributo `lang` del HTML.
 - [x] Tipografía única: DM Mono en toda la app (antes Manrope y Newsreader).
+- [x] Mosaico probado con las 5 misiones (890 fotos, 0 fallos; primera descarga
+      de 46 s a 108 s por misión). Tamaños revisados con datos reales:
+      misiones 1–3 a ~50 km → fotos de 1,2–1,4° (≈ 37–42 km, coherente con la
+      cámara de resolución media); misión 4 a 2700–5800 km → las 131 fotos llegan
+      al tope de 30° y forman un mapa de cobertura de la cara visible; misión 5
+      mezcla 130 primeros planos (~100–130 km) y 30 tomas altas de la cara oculta.
+      `MAX_PATCH_DEGREES` se mantiene en 30°. Etiquetas N/S separadas del limbo.
 
 ## Pendiente
 
-- [ ] Comprobar la primera ejecución de la CI en GitHub (en local pasan los tests
-      con Python 3.10 y 3.14).
-- [ ] Probar el mosaico de las misiones 2–5 (solo la 1 se ha descargado entera;
-      de la 3 solo se probó la lista de fotogramas). Las misiones 4 y 5 tienen órbitas polares altas y fotos
-      mucho mayores: revisar cómo se ven y si hace falta ajustar `MAX_PATCH_DEGREES`.
-- [ ] Revisar con datos reales la aproximación del tamaño de cada foto
-      (`FOOTPRINT_PER_ALTITUDE`), que asume toma vertical; las oblicuas quedan
-      deformadas.
+- [ ] Comprobar la primera ejecución de la CI en GitHub: requiere hacer push
+      (en local pasan los tests con Python 3.10 y 3.14).
+- [ ] Texturas más nítidas para las fotos grandes (misión 4 y tomas altas): hoy
+      todas usan 20 px (`TILE_SIZE`). Escalar la resolución con el tamaño del
+      parche sin disparar el peso de la figura (la misión 4 entera pesa hoy
+      ~63 000 vértices).
+- [ ] Las tomas oblicuas de gran altitud (p. ej. las de la Tierra de las misiones
+      1–3) quedan deformadas: valorar marcarlas u ocultarlas por defecto.

@@ -36,8 +36,8 @@ SELECTED_RADIUS = 1.006
 CAMERA_DISTANCE = 1.6
 REFERENCE_COLOR = "#8fb3c9"
 # Pole labels sit just outside the sphere; the axis range must include them.
-POLE_LABEL_HEIGHT = 1.12
-AXIS_LIMIT = 1.2
+POLE_LABEL_HEIGHT = 1.18
+AXIS_LIMIT = 1.25
 GRAY_SCALE = [[0.0, "#000000"], [1.0, "#ffffff"]]
 NO_CONTOURS = {axis: {"highlight": False} for axis in ("x", "y", "z")}
 

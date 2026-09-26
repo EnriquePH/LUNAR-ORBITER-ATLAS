@@ -120,3 +120,13 @@ to their respective owners. The reference tabs summarise Wikipedia articles
 [Lunar Orbiter program](https://en.wikipedia.org/wiki/Lunar_Orbiter_program))
 and that text is available under
 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+
+## Citation
+
+If you use this software, cite it as **ENERGYCODE (2026), _Lunar Orbiter
+Atlas_, version 0.1.0**. GitHub can generate a formatted citation from
+[`CITATION.cff`](CITATION.cff).
+
+For photographs or metadata, cite the Lunar and Planetary Institute's Lunar
+Orbiter Photo Gallery and the individual frame record used. The software
+citation does not replace image attribution or the LPI's usage terms.

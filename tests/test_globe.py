@@ -84,7 +84,7 @@ def test_make_globe_marks_poles_and_equator():
     traces = {trace.name: trace for trace in make_globe().data}
 
     assert list(traces["poles"].text) == ["", "", "N", "S"]
-    assert list(traces["poles"].z) == [1.01, -1.01, 1.12, -1.12]
+    assert list(traces["poles"].z) == [1.01, -1.01, 1.18, -1.18]
     assert np.allclose(traces["equator"].z, 0)
     assert traces["equator"].hoverinfo == traces["poles"].hoverinfo == "skip"
 
