@@ -51,6 +51,10 @@
       aviso para tomas de más de 1000 km. S del polo sur a la misma distancia que N.
 - [x] Badges en el README.
 
+- [x] Push, CI en verde (Python 3.10 y 3.14) y web publicada en
+      <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>. Acciones de GitHub
+      actualizadas a versiones con Node 24.
+
 ## Pendiente
 
-- [ ] Hacer push y comprobar la primera ejecución de la CI y del despliegue de Pages.
+- (nada abierto)
