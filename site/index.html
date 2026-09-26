@@ -9,7 +9,7 @@
   <meta property="og:description" content="Interactive 3D atlas of NASA Lunar Orbiter photographs (1966–1967).">
   <meta property="og:image" content="assets/screens/atlas.webp">
   <link rel="icon" href="assets/favicon.ico" sizes="any">
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
 <body>
   <header class="topbar">
     <a class="wordmark" href="./">
-      <img src="assets/logo.svg" alt="" width="40" height="40">
+      <img src="assets/icon.png" alt="" width="40" height="40">
       <span>LUNAR ORBITER<br>ATLAS</span>
     </a>
     <nav class="topnav" aria-label="Sections">
@@ -36,6 +36,8 @@
 
   <main>
     <section class="hero">
+      <div class="hero-grid">
+      <div class="hero-copy">
       <div class="eyebrow">
         <span data-l="en">NASA · LUNAR ORBITER 1–5 · 1966—1967</span>
         <span data-l="es">NASA · LUNAR ORBITER 1–5 · 1966—1967</span>
@@ -51,6 +53,11 @@
       <div class="actions">
         <a class="button" href="#run"><span data-l="en">Run it locally</span><span data-l="es">Ejecutar en local</span></a>
         <a class="button button--ghost" href="https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS"><span data-l="en">Source code ↗</span><span data-l="es">Código fuente ↗</span></a>
+      </div>
+      </div>
+      <div class="hero-logo">
+        <img src="assets/logo.png" alt="Lunar-Orbiter Atlas" width="702" height="720">
+      </div>
       </div>
       <figure class="hero-shot">
         <img src="assets/screens/atlas.webp" width="1440" height="900"

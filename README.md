@@ -4,7 +4,7 @@ A local web app for exploring the photographs of NASA's Lunar Orbiter missions
 (1966–1967) on an interactive 3D Moon. Images and metadata come from the
 [Lunar and Planetary Institute (LPI) Lunar Orbiter Photo Gallery](https://www.lpi.usra.edu/resources/lunarorbiter/).
 
-<img src="orbiter/assets/logo.svg" alt="" width="72" align="right">
+<img src="orbiter/assets/icon.png" alt="" width="96" align="right">
 
 Repository: <https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS> ·
 Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
@@ -91,7 +91,7 @@ make test     # pytest
 make lint     # Ruff lint and format check
 make format   # apply Ruff fixes and formatting
 make check    # lint + test
-make icons    # render favicon and PNG icons from the logo
+make icons    # build favicon and icons from assets/icon.png and logo.png
 make help     # list all targets
 ```
 
@@ -110,7 +110,8 @@ Project layout:
 | `orbiter/reference.py`     | Moon and Lunar Orbiter program tabs                 |
 | `orbiter/config.py`        | `config.json` loader                                |
 | `orbiter/assets/style.css` | Styles (served automatically by Dash)               |
-| `orbiter/assets/logo.svg`  | Logo; `make icons` renders the favicon and PNG icons |
+| `assets/`                  | Brand images: `icon.png` and `logo.png` (sources)   |
+| `orbiter/assets/icon.png`  | App icon; `make icons` builds it and the favicons   |
 | `scripts/run.sh`           | Launch script used by `make run`                    |
 | `site/`                    | Static project page, deployed to GitHub Pages       |
 

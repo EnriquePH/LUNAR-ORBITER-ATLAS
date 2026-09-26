@@ -22,14 +22,14 @@ lint:  ## Check code style with Ruff
 	$(PYTHON) -m ruff check .
 	$(PYTHON) -m ruff format --check .
 
-format:  ## Format the code with Ruff
-	$(PYTHON) -m ruff check --fix .
+format:  ## Format the code with Ruff, then apply its lint fixes
 	$(PYTHON) -m ruff format .
+	$(PYTHON) -m ruff check --fix .
 
 check: lint test  ## Lint and test
 
-icons:  ## Render favicon and PNG icons from orbiter/assets/logo.svg
-	./scripts/build_icons.sh
+icons:  ## Build favicon and icons from assets/icon.png and assets/logo.png
+	$(PYTHON) scripts/build_icons.py
 
 clean:  ## Remove tool caches (keeps data/ and draft/)
 	rm -rf .pytest_cache .ruff_cache build *.egg-info

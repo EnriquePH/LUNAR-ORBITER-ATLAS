@@ -49,6 +49,9 @@ html[data-lang="es"] [data-l="en"] { display: none !important; }
 .lang-switch button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
 
 .hero { padding: 56px 0 24px; }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 40px; align-items: center; }
+/* The logo has dark lettering, so it sits on a light card on this dark page. */
+.hero-logo { background: #f4f2ee; border-radius: 4px; padding: 22px; }
 .eyebrow { color: var(--accent-soft); font-size: 10px; letter-spacing: 1.2px; }
 h1 { margin: 10px 0 0; max-width: 900px; font-size: clamp(26px, 4.4vw, 44px); font-weight: 500; line-height: 1.2; letter-spacing: -.5px; }
 .lead { max-width: 760px; margin: 18px 0 0; color: #cfccc5; font-size: 15px; }
@@ -99,4 +102,6 @@ p code { color: var(--accent-soft); }
   .topnav { order: 3; width: 100%; gap: 16px; flex-wrap: wrap; }
   .gallery { grid-template-columns: minmax(0, 1fr); }
   .hero { padding-top: 36px; }
+  .hero-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .hero-logo { max-width: 260px; }
 }

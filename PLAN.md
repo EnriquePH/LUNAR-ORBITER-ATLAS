@@ -34,8 +34,9 @@
       al tope de 30° y forman un mapa de cobertura de la cara visible; misión 5
       mezcla 130 primeros planos (~100–130 km) y 30 tomas altas de la cara oculta.
       `MAX_PATCH_DEGREES` se mantiene en 30°. Etiquetas N/S separadas del limbo.
-- [x] Logo (`orbiter/assets/logo.svg`), favicon e iconos (`make icons`); logo en la
-      barra superior de la app.
+- [x] Icono y logo del usuario (`assets/icon.png`, `assets/logo.png`) como imagen de
+      marca: favicon e iconos con `make icons`, icono en la barra de la app, logo en
+      la web. (Mi primer logo SVG está en `draft/`.)
 - [x] Página del proyecto en `site/` para GitHub Pages (bilingüe, capturas, cómo
       ejecutarla, fuentes y licencias) y workflow `pages.yml`.
 - [x] Texturas según el tamaño de cada foto: 3 px/grado entre 10 y 48 px, con un

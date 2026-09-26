@@ -121,14 +121,14 @@ app = Dash(
     __name__, external_stylesheets=[FONTS_URL], suppress_callback_exceptions=True
 )
 app.title = "Lunar Orbiter Atlas"
-# Dash's default page plus the SVG and touch icons (favicon.ico is automatic).
+# Dash's default page plus PNG and touch icons (favicon.ico is automatic).
 app.index_string = """<!DOCTYPE html>
 <html>
     <head>
         {%metas%}
         <title>{%title%}</title>
         {%favicon%}
-        <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+        <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
         <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
         {%css%}
     </head>
@@ -324,7 +324,7 @@ def serve_layout(lang: str) -> html.Div:
                     html.Div(
                         [
                             html.Img(
-                                src=app.get_asset_url("logo.svg"),
+                                src=app.get_asset_url("icon.png"),
                                 alt="",
                                 className="brand-logo",
                             ),
