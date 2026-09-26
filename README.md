@@ -12,7 +12,7 @@ A local web app for exploring the photographs of NASA's Lunar Orbiter missions
 (1966–1967) on an interactive 3D Moon. Images and metadata come from the
 [Lunar and Planetary Institute (LPI) Lunar Orbiter Photo Gallery](https://www.lpi.usra.edu/resources/lunarorbiter/).
 
-<img src="orbiter/assets/icon.png" alt="" width="96" align="right">
+![Lunar Orbiter Atlas icon](orbiter/assets/icon-192.png)
 
 Repository: <https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS> ·
 Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
