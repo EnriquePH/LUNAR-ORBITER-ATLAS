@@ -42,6 +42,8 @@ Usa siempre el entorno `.venv` (Python 3.14; el proyecto declara >=3.10):
 
 ## Convenciones
 
+- **No borrar archivos**: muévelos a `draft/` (ignorada por git) conservando su ruta
+  relativa, p. ej. `mkdir -p draft/orbiter && mv orbiter/x.py draft/orbiter/`.
 - Textos de UI, mensajes de error y README en **español**; identificadores y docstrings en inglés.
 - Los tests nunca deben hacer peticiones reales al LPI. Las cachés `lru_cache` de
   `lpi.py` se limpian en un fixture `autouse` de `tests/conftest.py`; si añades otra

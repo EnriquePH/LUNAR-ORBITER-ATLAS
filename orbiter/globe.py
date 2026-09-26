@@ -28,6 +28,10 @@ TILE_RADIUS = 1.003
 TILE_RADIUS_STEP = 0.0004
 SELECTED_RADIUS = 1.006
 CAMERA_DISTANCE = 1.6
+REFERENCE_COLOR = "#8fb3c9"
+# Pole labels sit just outside the sphere; the axis range must include them.
+POLE_LABEL_HEIGHT = 1.12
+AXIS_LIMIT = 1.2
 GRAY_SCALE = [[0.0, "#000000"], [1.0, "#ffffff"]]
 NO_CONTOURS = {axis: {"highlight": False} for axis in ("x", "y", "z")}
 
@@ -136,7 +140,10 @@ def _base_sphere() -> go.Surface:
     )
 
 
-def _image_surface(image: GlobeImage, radius: float) -> go.Surface:
+def _patch_grid(
+    image: GlobeImage, radius: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Cartesian grid with one vertex per texture pixel."""
     height, width = image.texture.shape
     latitude_span, longitude_span = _patch_extent(image)
     # Image rows run north to south; columns run west to east.
@@ -155,9 +162,11 @@ def _image_surface(image: GlobeImage, radius: float) -> go.Surface:
         width,
     )
     latitude_grid, longitude_grid = np.meshgrid(latitudes, longitudes, indexing="ij")
-    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(
-        latitude_grid, longitude_grid, radius
-    )
+    return _to_cartesian(latitude_grid, longitude_grid, radius)
+
+
+def _image_surface(image: GlobeImage, radius: float) -> go.Surface:
+    x_coordinates, y_coordinates, z_coordinates = _patch_grid(image, radius)
     return go.Surface(
         x=x_coordinates.astype(np.float32),
         y=y_coordinates.astype(np.float32),
@@ -170,6 +179,62 @@ def _image_surface(image: GlobeImage, radius: float) -> go.Surface:
         name=image.frame_id,
         hovertemplate="%{fullData.name}<extra></extra>",
         contours=NO_CONTOURS,
+        lighting={"ambient": 0.8, "diffuse": 0.4, "specular": 0.0},
+    )
+
+
+def _grid_triangles(height: int, width: int, offset: int) -> np.ndarray:
+    """Two triangles per grid cell, as (n, 3) vertex indices."""
+    rows, columns = np.meshgrid(
+        np.arange(height - 1), np.arange(width - 1), indexing="ij"
+    )
+    top_left = (rows * width + columns).ravel() + offset
+    top_right, bottom_left = top_left + 1, top_left + width
+    bottom_right = bottom_left + 1
+    return np.concatenate(
+        [
+            np.stack([top_left, bottom_left, top_right], axis=1),
+            np.stack([top_right, bottom_left, bottom_right], axis=1),
+        ]
+    )
+
+
+def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
+    """Merge every tile into one mesh: one WebGL draw call instead of hundreds.
+
+    Frame IDs travel as numeric per-vertex ``customdata`` (sent in binary),
+    which keeps the payload small while still labelling each photo on hover.
+    """
+    coordinates, intensities, triangles, frame_ids = [], [], [], []
+    offset = 0
+    for index, tile in enumerate(tiles):
+        radius = TILE_RADIUS + TILE_RADIUS_STEP * (index % 7)
+        grid = np.stack([axis.ravel() for axis in _patch_grid(tile, radius)], axis=1)
+        height, width = tile.texture.shape
+        coordinates.append(grid)
+        intensities.append(tile.texture.ravel())
+        triangles.append(_grid_triangles(height, width, offset))
+        frame_ids.append(np.full(len(grid), int(tile.frame_id), dtype=np.int32))
+        offset += len(grid)
+
+    vertices = np.concatenate(coordinates).astype(np.float32)
+    faces = np.concatenate(triangles).astype(np.int32)
+    return go.Mesh3d(
+        x=vertices[:, 0],
+        y=vertices[:, 1],
+        z=vertices[:, 2],
+        i=faces[:, 0],
+        j=faces[:, 1],
+        k=faces[:, 2],
+        intensity=np.concatenate(intensities).astype(np.float32),
+        intensitymode="vertex",
+        colorscale=GRAY_SCALE,
+        cmin=0,
+        cmax=255,
+        showscale=False,
+        customdata=np.concatenate(frame_ids),
+        hovertemplate="%{customdata}<extra></extra>",
+        flatshading=False,
         lighting={"ambient": 0.8, "diffuse": 0.4, "specular": 0.0},
     )
 
@@ -192,6 +257,39 @@ def _marker(image: GlobeImage) -> go.Scatter3d:
         ],
         hoverinfo="text",
     )
+
+
+def _reference_marks() -> list[go.Scatter3d]:
+    """Dotted equator plus labelled north and south poles.
+
+    ``hoverinfo="skip"`` keeps them from producing hover or click events, so a
+    click near the equator still reaches the photo underneath.
+    """
+    longitudes = np.linspace(-180, 180, 181)
+    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(
+        np.zeros_like(longitudes), longitudes, 1.008
+    )
+    equator = go.Scatter3d(
+        x=x_coordinates,
+        y=y_coordinates,
+        z=z_coordinates,
+        name="equator",
+        mode="lines",
+        line={"color": REFERENCE_COLOR, "width": 2, "dash": "dot"},
+        hoverinfo="skip",
+    )
+    poles = go.Scatter3d(
+        x=[0, 0, 0, 0],
+        y=[0, 0, 0, 0],
+        z=[1.01, -1.01, POLE_LABEL_HEIGHT, -POLE_LABEL_HEIGHT],
+        name="poles",
+        mode="markers+text",
+        marker={"size": [5, 5, 0, 0], "color": REFERENCE_COLOR},
+        text=["", "", "N", "S"],
+        textfont={"color": REFERENCE_COLOR, "family": "DM Mono, monospace", "size": 13},
+        hoverinfo="skip",
+    )
+    return [equator, poles]
 
 
 def _camera_eye(latitude: float, longitude: float) -> dict[str, float]:
@@ -233,15 +331,14 @@ def make_globe(
     rotation while tiles are added or hidden for the same selection.
     """
     tiles = sorted(tiles, key=lambda tile: tile.frame_id)
-    traces: list[go.Surface | go.Scatter3d] = [_base_sphere()]
-    for index, image in enumerate(visible_images(selected, tiles, hidden)):
-        is_selected = selected is not None and image.frame_id == selected.frame_id
-        radius = (
-            SELECTED_RADIUS
-            if is_selected
-            else TILE_RADIUS + TILE_RADIUS_STEP * (index % 7)
-        )
-        traces.append(_image_surface(image, radius))
+    images = visible_images(selected, tiles, hidden)
+    mosaic = [image for image in images if image is not selected]
+    traces: list[go.Surface | go.Mesh3d | go.Scatter3d] = [_base_sphere()]
+    if mosaic:
+        traces.append(_tiles_mesh(mosaic))
+    if selected is not None and selected in images:
+        traces.append(_image_surface(selected, SELECTED_RADIUS))
+    traces += _reference_marks()
     if selected is not None:
         traces.append(_marker(selected))
         eye = _camera_eye(selected.latitude, selected.longitude)
@@ -250,12 +347,17 @@ def make_globe(
     else:
         eye = _camera_eye(22, 35)
 
-    hidden_axis = {"visible": False, "range": [-1.1, 1.1]}
+    hidden_axis = {"visible": False, "range": [-AXIS_LIMIT, AXIS_LIMIT]}
     figure = go.Figure(traces)
     figure.update_layout(
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
+        hoverlabel={
+            "bgcolor": "#181a1b",
+            "bordercolor": ACCENT,
+            "font": {"family": "DM Mono, monospace", "color": "#e6e3dd", "size": 11},
+        },
         uirevision=selected.frame_id if selected else "globe",
         scene={
             "xaxis": hidden_axis,

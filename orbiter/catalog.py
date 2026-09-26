@@ -28,7 +28,7 @@ from orbiter.urls import ORBITER_URL, frame_url
 
 REQUEST_DELAY_SECONDS = 0.25
 DOWNLOAD_WORKERS = 3
-TILE_SIZE = (32, 32)
+TILE_SIZE = (20, 20)
 
 
 def default_cache_dir() -> Path:

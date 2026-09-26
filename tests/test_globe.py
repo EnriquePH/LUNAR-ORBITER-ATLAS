@@ -68,16 +68,40 @@ def test_visible_images_skip_hidden_and_replace_tile_with_selection():
     assert images[-1] is selected
 
 
+REFERENCES = {"equator", "poles"}
+
+
+def _without_references(figure):
+    return [trace for trace in figure.data if trace.name not in REFERENCES]
+
+
 def test_make_globe_without_images_has_only_base_sphere():
-    assert [trace.type for trace in make_globe().data] == ["surface"]
+    assert [trace.type for trace in _without_references(make_globe())] == ["surface"]
+
+
+def test_make_globe_marks_poles_and_equator():
+    traces = {trace.name: trace for trace in make_globe().data}
+
+    assert list(traces["poles"].text) == ["", "", "N", "S"]
+    assert list(traces["poles"].z) == [1.01, -1.01, 1.12, -1.12]
+    assert np.allclose(traces["equator"].z, 0)
+    assert traces["equator"].hoverinfo == traces["poles"].hoverinfo == "skip"
 
 
 def test_make_globe_draws_tiles_selection_and_marker():
     figure = make_globe(_image("1041"), [_image("1042"), _image("1043")], {"1043"})
 
-    names = [trace.name for trace in figure.data[1:-1]]
-    assert names == ["1042", "1041"]
-    assert figure.data[-1].type == "scatter3d"
+    base, mosaic, selected, marker = _without_references(figure)
+    assert (mosaic.type, selected.type, marker.type) == (
+        "mesh3d",
+        "surface",
+        "scatter3d",
+    )
+    assert set(np.asarray(mosaic.customdata)) == {1042}
+    assert len(mosaic.x) == 32 * 24
+    assert len(mosaic.i) == 2 * 31 * 23
+    assert int(np.max(mosaic.i)) < len(mosaic.x)
+    assert selected.name == "1041"
     assert list(figure.data[-1].text) == ["1041"]
     assert figure.layout.uirevision == "1041"
 
@@ -85,7 +109,10 @@ def test_make_globe_draws_tiles_selection_and_marker():
 def test_make_globe_keeps_marker_for_hidden_selection():
     figure = make_globe(_image("1041"), [], {"1041"})
 
-    assert [trace.type for trace in figure.data] == ["surface", "scatter3d"]
+    assert [trace.type for trace in _without_references(figure)] == [
+        "surface",
+        "scatter3d",
+    ]
 
 
 def test_make_globe_centres_camera_on_selection():

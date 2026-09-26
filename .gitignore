@@ -22,6 +22,9 @@ htmlcov/
 /data/
 /outputs/
 
+# Files removed from the project are moved here instead of deleted
+/draft/
+
 # Local editor and operating-system files
 .vscode/
 .idea/

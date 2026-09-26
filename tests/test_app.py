@@ -133,7 +133,9 @@ def test_render_globe_combines_selection_and_mission_tiles(monkeypatch):
 
     figure = render_globe("1041", ["1006"], 2, 1)
 
-    assert [trace.name for trace in figure.data[1:-1]] == ["1005", "1041"]
+    mosaic, selected = figure.data[1:3]
+    assert set(np.asarray(mosaic.customdata)) == {1005}
+    assert selected.name == "1041"
 
 
 def test_metadata_rows_show_spacecraft_and_illumination():
