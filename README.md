@@ -74,6 +74,10 @@ thumbnail of each of its frames (about 200 per mission) and caches them in
 most four requests per second. Frame previews are fetched on demand and kept in
 a small in-memory cache. Nothing downloaded is committed to the repository.
 
+The disk cache never expires, since the archive does not change. Delete
+`data/lpi/` (or one frame's files in it) to download again. Frames that failed
+are retried the next time the app starts.
+
 Check the LPI terms of use before automating requests or redistributing images,
 and keep the source URL and attribution metadata that the archive publishes.
 
@@ -86,6 +90,9 @@ make format   # apply Ruff fixes and formatting
 make check    # lint + test
 make help     # list all targets
 ```
+
+Public functions and classes need Google-style docstrings, which Ruff checks.
+State units (degrees, km), optional fields, caching and raised exceptions.
 
 Project layout:
 

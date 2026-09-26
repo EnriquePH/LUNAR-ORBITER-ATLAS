@@ -9,6 +9,7 @@ from orbiter.globe import (
     format_coordinates,
     image_at,
     make_globe,
+    patch_contains,
     patch_width_degrees,
     visible_images,
 )
@@ -119,3 +120,11 @@ def test_make_globe_centres_camera_on_selection():
     figure = make_globe(_image(latitude=-80))
 
     assert figure.layout.scene.camera.eye.z < 0
+
+
+def test_patch_contains_handles_the_180_degree_meridian():
+    east_edge = _image("2001", latitude=0, longitude=179.5)
+
+    assert patch_contains(east_edge, 0, -179.5)
+    assert patch_contains(east_edge, 0, 180.5)
+    assert not patch_contains(east_edge, 0, 0)

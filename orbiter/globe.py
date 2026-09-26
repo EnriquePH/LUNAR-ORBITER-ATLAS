@@ -1,7 +1,13 @@
 """Plotly figure for the lunar globe: base sphere, frame tiles and selection.
 
 Frames are placed schematically: each one is a north-up patch centred on its
-principal point, sized from the spacecraft altitude when the LPI lists it.
+principal point, sized from the spacecraft altitude when the LPI lists it. This
+is a visual aid, not a photogrammetric footprint or a map projection: camera
+tilt, frame orientation and terrain are ignored, so oblique shots look wrong.
+
+Coordinates are selenographic degrees (north and east positive, longitudes in
+-180..180 or any equivalent value). The globe is a unit sphere in Plotly scene
+coordinates; ``x`` points to 0° E, ``y`` to 90° E and ``z`` to the north pole.
 """
 
 from __future__ import annotations
@@ -38,7 +44,17 @@ NO_CONTOURS = {axis: {"highlight": False} for axis in ("x", "y", "z")}
 
 @dataclass(frozen=True, eq=False)
 class GlobeImage:
-    """Anything drawable on the globe: an ID, a position and a texture."""
+    """Anything drawable on the globe: an ID, a position and a texture.
+
+    Attributes:
+        frame_id: Numeric LPI frame ID as text; also used as the hover label.
+        latitude: Principal point latitude in degrees (-90..90).
+        longitude: Principal point longitude in degrees.
+        altitude_km: Spacecraft altitude in km, or ``None`` if unknown; it
+            sets the patch size (see :func:`patch_width_degrees`).
+        texture: 2-D ``uint8`` grayscale array (rows north to south, columns
+            west to east), 0 black to 255 white. Its aspect sets the patch's.
+    """
 
     frame_id: str
     latitude: float
@@ -72,12 +88,28 @@ def _to_cartesian(
 
 
 def to_latitude_longitude(x: float, y: float, z: float) -> tuple[float, float]:
+    """Convert a scene point to (latitude, longitude) in degrees.
+
+    The point may lie at any non-zero distance from the centre (tiles float
+    slightly above the unit sphere). Longitude is returned in -180..180.
+    """
     radius = math.sqrt(x * x + y * y + z * z)
     return math.degrees(math.asin(z / radius)), math.degrees(math.atan2(y, x))
 
 
 def patch_width_degrees(altitude_km: float | None) -> float:
-    """Approximate ground width of a frame, as degrees of lunar arc."""
+    """Approximate east-west ground width of a frame, in degrees of lunar arc.
+
+    Uses ``FOOTPRINT_PER_ALTITUDE`` km of ground per km of altitude, derived
+    from the medium-resolution camera looking straight down.
+
+    Args:
+        altitude_km: Spacecraft altitude in km, or ``None`` if unknown.
+
+    Returns:
+        ``FALLBACK_PATCH_DEGREES`` when the altitude is unknown; otherwise the
+        estimate clamped to ``MIN_PATCH_DEGREES``..``MAX_PATCH_DEGREES``.
+    """
     if altitude_km is None:
         return FALLBACK_PATCH_DEGREES
     width_km = FOOTPRINT_PER_ALTITUDE * altitude_km
@@ -96,6 +128,11 @@ def _patch_extent(image: GlobeImage) -> tuple[float, float]:
 
 
 def patch_contains(image: GlobeImage, latitude: float, longitude: float) -> bool:
+    """Tell whether a point in degrees falls inside an image's patch.
+
+    Longitudes are compared modulo 360°, so patches that cross the 180°
+    meridian work and ``-170`` and ``190`` are the same longitude.
+    """
     latitude_span, longitude_span = _patch_extent(image)
     delta_longitude = (longitude - image.longitude + 180) % 360 - 180
     return (

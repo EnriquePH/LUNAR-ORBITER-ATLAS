@@ -42,7 +42,12 @@ def _thumbnail(image_bytes: bytes) -> Image.Image:
 
 
 def globe_image(frame: OrbiterFrame) -> GlobeImage:
-    """Convert a fetched frame into a high-resolution globe texture."""
+    """Build the globe image of the selected frame.
+
+    The texture is the LPI preview reduced to at most ``TEXTURE_SIZE`` pixels:
+    sharper than the mosaic tiles, but not the full preview, which the side
+    panel shows separately from ``frame.image_bytes``.
+    """
     return GlobeImage(
         frame_id=frame.frame_id,
         latitude=frame.latitude,
@@ -375,6 +380,7 @@ app.validation_layout = html.Div(
 
 @app.callback(Output("page", "children"), Input("url", "search"))
 def render_page(search: str | None):
+    """Build the page in the language of the URL's ``?lang=``."""
     return serve_layout(language_from_search(search))
 
 
@@ -391,6 +397,11 @@ def render_page(search: str | None):
     prevent_initial_call=True,
 )
 def update_frame(_clicks: int, _interval: int, frame_id: str, lang: str = "es"):
+    """Load a frame into the side panel and make it the globe's selection.
+
+    Returns the selected ID, preview data URL, metadata rows, LPI link and
+    status line; on failure only the status changes.
+    """
     unchanged = (no_update,) * 4
     try:
         frame = fetch_frame(frame_id)
@@ -436,6 +447,7 @@ def render_globe(
     _mosaic_count: int,
     mission: int | None,
 ):
+    """Redraw the globe: the mission's loaded tiles, minus hidden ones."""
     tiles = LOADER.progress(mission).tiles.values() if mission else ()
     return make_globe(_selected_image(selected_id), tiles, set(hidden or ()))
 
@@ -453,6 +465,7 @@ def render_globe(
     prevent_initial_call="initial_duplicate",
 )
 def list_mission_frames(mission: int, lang: str = "es"):
+    """Fill the frame selector and start downloading the mission's mosaic."""
     try:
         frame_ids = fetch_mission_frames(mission)
     except requests.RequestException as error:
@@ -477,6 +490,11 @@ def list_mission_frames(mission: int, lang: str = "es"):
     prevent_initial_call=True,
 )
 def poll_mosaic(_intervals: int, mission: int | None, rendered: int, lang="es"):
+    """Report download progress and trigger redraws as tiles arrive.
+
+    Redraws every ``MOSAIC_RENDER_STEP`` tiles and once at the end, then stops
+    polling.
+    """
     if not mission:
         return no_update, no_update, True
     progress = LOADER.progress(mission)
@@ -534,6 +552,7 @@ def hide_clicked_image(
     State("lang", "data"),
 )
 def describe_hidden(hidden: list[str] | None, lang: str = "es"):
+    """Label the «show hidden» button with the count; disable it at zero."""
     count = len(hidden or ())
     return t(lang, "show_hidden", count=count), count == 0
 
@@ -544,6 +563,7 @@ def describe_hidden(hidden: list[str] | None, lang: str = "es"):
     prevent_initial_call=True,
 )
 def show_hidden(_clicks: int):
+    """Make every hidden photo visible again."""
     return []
 
 

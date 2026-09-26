@@ -34,10 +34,12 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   clicks). Tamaño de cada foto según la altitud de la nave (`patch_width_degrees`).
   El click se resuelve por geometría (`image_at`), no por índices de traza.
 - `orbiter/catalog.py` — `MissionLoader` descarga en hilos todas las fotos de una
-  misión; `TileStore` cachea página+miniatura en `data/lpi/` (escritura atómica),
-  3 workers con un límite compartido de 4 peticiones/s.
-- `orbiter/lpi.py` — cliente y parser del LPI. Errores como `LpiError(key, **params)`
-  que la app traduce con `describe_error`.
+  misión; `TileStore` cachea página+miniatura en `data/lpi/` (escritura atómica,
+  sin caducidad: se recarga borrando la carpeta), 3 workers con un límite
+  compartido de 4 peticiones/s.
+- `orbiter/lpi.py` — cliente y parser del LPI; el parser devuelve `FrameMetadata`
+  (`TypedDict`). Errores como `LpiError(key, **params)` que la app traduce con
+  `describe_error`. `clear_cache()` vacía las `lru_cache` (lo usa `conftest.py`).
 - `orbiter/i18n.py` — todos los textos de la UI en `TEXTS["es"|"en"]`; `t(lang, key)`.
 - `orbiter/reference.py` — pestañas «La Luna» y «Programa Lunar Orbiter»
   (`CONTENT["es"|"en"]`), texto CC BY-SA 4.0 resumido de Wikipedia.
@@ -54,14 +56,17 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - **Idiomas**: la UI es bilingüe; ningún texto visible va escrito en el código, todo
   pasa por `t()` con la misma clave en `es` y `en` (lo comprueba `tests/test_i18n.py`).
   README en **inglés**. Identificadores y docstrings en inglés.
-- Los tests nunca hacen peticiones reales al LPI. Las `lru_cache` de `lpi.py` se
-  limpian en el fixture `autouse` de `tests/conftest.py`; el `LOADER` de la app se
-  sustituye por un `FakeLoader`.
+- Los tests nunca hacen peticiones reales al LPI. `lpi.clear_cache()` se llama en
+  el fixture `autouse` de `tests/conftest.py`; el `LOADER` de la app se sustituye
+  por un `FakeLoader`.
 - Sé conservador con el LPI: caché en disco, timeouts, límite de peticiones.
   El User-Agent lleva la web de ENERGYCODE, no emails.
 - No subir descargas: `/data/`, `/outputs/` y `/draft/` están en `.gitignore`.
   MIT cubre solo el código; imágenes del LPI y texto de Wikipedia tienen su licencia.
 - Ruff: `line-length = 88` con `E501` y `ruff format`.
+- Docstrings estilo **Google** obligatorios en la API pública (Ruff `D`; `D107`
+  desactivado: los argumentos del constructor van en el docstring de la clase).
+  Indica unidades (grados, km), campos opcionales, caché y excepciones.
 - Un callback con N `Output` devuelve siempre N valores, también en ramas de error.
 - Comprobar la UI: `chromium-browser --headless --remote-debugging-port=9333` (snap:
   no escribe en `/tmp`, usa `outputs/`). Para parar la app usa `make run` (para la

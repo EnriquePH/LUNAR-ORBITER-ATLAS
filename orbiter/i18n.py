@@ -118,10 +118,24 @@ TEXTS: dict[str, dict[str, str]] = {
 
 
 def normalize_language(lang: str | None, default: str = "es") -> str:
-    """Return a supported language code, falling back to ``default``."""
+    """Return a supported language code, falling back to ``default``.
+
+    Only the first two letters count, case-insensitively, so ``"EN-us"`` gives
+    ``"en"``. Unsupported or empty values give ``default``.
+    """
     lang = (lang or "").lower()[:2]
     return lang if lang in LANGUAGES else default
 
 
 def t(lang: str, key: str, **params: object) -> str:
+    """Return the text for ``key`` in ``lang``, formatted with ``params``.
+
+    Args:
+        lang: Language code; unsupported values fall back to Spanish.
+        key: A key of ``TEXTS``, e.g. ``"show_hidden"``.
+        **params: Values for the ``{placeholders}`` in the text.
+
+    Raises:
+        KeyError: If ``key`` does not exist or a placeholder has no value.
+    """
     return TEXTS[normalize_language(lang)][key].format(**params)

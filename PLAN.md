@@ -3,7 +3,7 @@
 ## Hecho
 
 - [x] Fase 1 — errores del callback, coordenadas N/S/E/W, tests de callbacks.
-- [x] Fase 2 — globo con Plotly (rotación en el navegador, textura a resolución real).
+- [x] Fase 2 — globo con Plotly (rotación en el navegador, foto proyectada como textura).
 - [x] Fase 3 — metadatos de nave e iluminación, selectores de misión y fotograma.
 - [x] Fase 4 — CSS en `assets/`, Ruff con `E501` y formato.
 - [x] Mosaico de la misión en la esfera (caché en `data/lpi/`, una sola malla),
@@ -17,6 +17,14 @@
 - [x] README en inglés; licencia MIT a nombre de ENERGYCODE.
 - [x] CI con GitHub Actions (ruff + pytest, Python 3.10 y 3.14).
 - [x] Cuaderno Jupyter retirado a `draft/` junto con sus dependencias.
+
+- [x] Documentación de la API (de `draft/findings.md` e `improvements.md`):
+      textura de `globe_image()` descrita como miniatura; `FrameMetadata`
+      (`TypedDict`) con unidades y opcionales; caché, errores y `clear_cache()`
+      en `lpi.py`; unidades, aproximación y meridiano 180° en `globe.py`;
+      contratos de `config.py` e `i18n.py` (y `port: true` ahora se rechaza);
+      caché del mosaico documentada (no caduca; borrar `data/lpi` para recargar);
+      `urls.py` construye sin validar; Ruff `D` con convención Google.
 
 ## Pendiente
 

@@ -29,6 +29,7 @@ def test_reads_host_port_and_language(tmp_path):
     [
         ({"port": "8050"}, "port"),
         ({"port": 70000}, "port"),
+        ({"port": True}, "port"),
         ({"language": "fr"}, "language"),
         ({"host": ""}, "host"),
         ({"prot": 8050}, "Unknown keys"),

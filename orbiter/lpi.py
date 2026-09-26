@@ -1,10 +1,20 @@
-"""Small client for Lunar Orbiter frame pages in the LPI archive."""
+"""Client and parser for the LPI Lunar Orbiter Photo Gallery.
+
+Units used throughout: latitudes, longitudes and angles in degrees (east and
+north positive), altitudes in kilometres.
+
+Network calls use ``requests`` with timeouts and keep results in small
+in-memory LRU caches; :func:`clear_cache` empties them. Functions raise
+:class:`LpiError` for invalid input or pages without the expected data, and let
+``requests.RequestException`` propagate for HTTP and connection failures.
+"""
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import TypedDict
 from urllib.parse import urljoin
 
 import requests
@@ -20,6 +30,11 @@ class LpiError(ValueError):
 
     The app turns ``key`` and ``params`` into text with ``orbiter.i18n``; the
     plain message is English for logs and non-UI callers.
+
+    Args:
+        key: One of ``MESSAGES``: ``invalid_frame_id``, ``no_coordinates``,
+            ``no_preview``, ``invalid_mission`` or ``no_frames``.
+        **params: Values interpolated into the message, e.g. ``frame_id``.
     """
 
     MESSAGES = {
@@ -36,8 +51,35 @@ class LpiError(ValueError):
         super().__init__(self.MESSAGES[key].format(**params))
 
 
+class FrameMetadata(TypedDict):
+    """Fields parsed from a frame page.
+
+    ``mission``, ``latitude``, ``longitude`` and ``image_url`` are always set.
+    The spacecraft and illumination fields are ``None`` when the page does not
+    list them. Degrees for positions and angles, kilometres for altitude.
+    """
+
+    mission: str
+    latitude: float
+    longitude: float
+    image_url: str
+    spacecraft_altitude_km: float | None
+    spacecraft_latitude: float | None
+    spacecraft_longitude: float | None
+    sun_azimuth: float | None
+    incidence_angle: float | None
+    emission_angle: float | None
+    phase_angle: float | None
+
+
 @dataclass(frozen=True)
 class OrbiterFrame:
+    """A frame's metadata plus the bytes of its LPI preview JPEG.
+
+    ``latitude``/``longitude`` are the principal point (image centre) in
+    degrees; the optional fields follow :class:`FrameMetadata`.
+    """
+
     frame_id: str
     mission: str
     latitude: float
@@ -84,15 +126,27 @@ def _section(text: str, label: str) -> str:
 
 
 def _optional_number(section: str, label: str) -> float | None:
+    """Return the first number after ``label:`` in ``section``, if any."""
     match = re.search(rf"{re.escape(label)}:\s*{_NUMBER}", section, re.IGNORECASE)
     return float(match.group(1)) if match else None
 
 
-def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float | None]:
-    """Extract mission, coordinates, illumination, and preview URL.
+def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
+    """Extract mission, coordinates, illumination and preview URL from a page.
 
-    Principal point and preview are required; the other fields become ``None``
-    when the page does not list them.
+    The preview prefers the medium-resolution JPEG (``_med``) and falls back to
+    a high-resolution plate (``_h1``–``_h3``); its URL is made absolute.
+
+    Args:
+        frame_id: Frame identifier the page belongs to, e.g. ``"1041"``.
+        page_html: HTML of the frame page.
+
+    Returns:
+        The parsed fields; see :class:`FrameMetadata` for keys and units.
+
+    Raises:
+        LpiError: ``no_coordinates`` if the principal point is missing, or
+            ``no_preview`` if no preview link for ``frame_id`` is found.
     """
     soup = BeautifulSoup(page_html, "html.parser")
     text = " ".join(soup.stripped_strings)
@@ -122,16 +176,17 @@ def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float | N
     )
     image_url = urljoin(frame_url(frame_id), image_url)
 
-    return {
-        "mission": mission_match.group(1) if mission_match else "Lunar Orbiter",
-        "latitude": float(point_match.group(1)),
-        "longitude": float(point_match.group(2)),
-        "image_url": image_url,
-        **{
-            key: _optional_number(_section(text, section), label)
-            for key, section, label in _OPTIONAL_FIELDS
-        },
+    optional = {
+        key: _optional_number(_section(text, section), label)
+        for key, section, label in _OPTIONAL_FIELDS
     }
+    return FrameMetadata(
+        mission=mission_match.group(1) if mission_match else "Lunar Orbiter",
+        latitude=float(point_match.group(1)),
+        longitude=float(point_match.group(2)),
+        image_url=image_url,
+        **optional,
+    )
 
 
 def parse_mission_page(page_html: str) -> list[str]:
@@ -146,7 +201,22 @@ def parse_mission_page(page_html: str) -> list[str]:
 
 
 def fetch_frame(frame_id: str) -> OrbiterFrame:
-    """Fetch one frame page and its medium-resolution LPI preview."""
+    """Download a frame's page and preview image (two HTTP requests).
+
+    The last 16 frames are kept in memory, so repeated calls are free until
+    :func:`clear_cache` is called. Surrounding whitespace in the ID is ignored.
+
+    Args:
+        frame_id: Numeric frame identifier, e.g. ``"1041"``.
+
+    Returns:
+        The frame's metadata and preview bytes.
+
+    Raises:
+        LpiError: ``invalid_frame_id`` for non-numeric IDs (checked before any
+            request), or a parsing error from :func:`parse_frame_page`.
+        requests.RequestException: On HTTP errors, timeouts or no connection.
+    """
     frame_id = str(frame_id).strip()
     if not frame_id.isdigit():
         raise LpiError("invalid_frame_id")
@@ -178,7 +248,21 @@ def _fetch_frame_cached(frame_id: str) -> OrbiterFrame:
 
 
 def fetch_mission_frames(mission: int) -> list[str]:
-    """Fetch the frame IDs of one mission (1–5); results are cached."""
+    """Download the list of frame IDs of a mission (one HTTP request).
+
+    Each mission's list is cached in memory until :func:`clear_cache`.
+
+    Args:
+        mission: Mission number from 1 to ``MISSIONS_NUM``.
+
+    Returns:
+        Frame IDs in gallery order, without duplicates.
+
+    Raises:
+        LpiError: ``invalid_mission`` for numbers outside 1–5 (checked before
+            any request), or ``no_frames`` if the page lists none.
+        requests.RequestException: On HTTP errors, timeouts or no connection.
+    """
     if mission not in range(1, MISSIONS_NUM + 1):
         raise LpiError("invalid_mission", missions=MISSIONS_NUM)
     return list(_fetch_mission_frames_cached(mission))
@@ -194,3 +278,9 @@ def _fetch_mission_frames_cached(mission: int) -> tuple[str, ...]:
     if not frame_ids:
         raise LpiError("no_frames", mission=mission)
     return tuple(frame_ids)
+
+
+def clear_cache() -> None:
+    """Forget the frames and mission lists kept in memory."""
+    _fetch_frame_cached.cache_clear()
+    _fetch_mission_frames_cached.cache_clear()

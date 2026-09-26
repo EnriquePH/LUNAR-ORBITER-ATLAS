@@ -353,6 +353,7 @@ def _source(source: tuple[str, str], lang: str) -> html.P:
 
 
 def moon_tab(lang: str) -> html.Div:
+    """Build the «Moon» tab: summary, source and fact cards in ``lang``."""
     text = CONTENT[lang]
     return html.Div(
         [
@@ -384,6 +385,7 @@ def moon_tab(lang: str) -> html.Div:
 
 
 def program_tab(lang: str) -> html.Div:
+    """Build the «Lunar Orbiter program» tab: summary, facts and mission log."""
     text = CONTENT[lang]
     table = html.Table(
         [

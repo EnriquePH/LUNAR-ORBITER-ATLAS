@@ -1,12 +1,10 @@
 import pytest
 
-from orbiter.lpi import _fetch_frame_cached, _fetch_mission_frames_cached
+from orbiter.lpi import clear_cache
 
 
 @pytest.fixture(autouse=True)
 def clear_lpi_caches():
-    _fetch_frame_cached.cache_clear()
-    _fetch_mission_frames_cached.cache_clear()
+    clear_cache()
     yield
-    _fetch_frame_cached.cache_clear()
-    _fetch_mission_frames_cached.cache_clear()
+    clear_cache()
