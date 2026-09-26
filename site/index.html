@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lunar Orbiter Atlas</title>
+  <meta name="description" content="Interactive 3D atlas of NASA Lunar Orbiter photographs (1966–1967) from the LPI archive, in English and Spanish.">
+  <meta property="og:title" content="Lunar Orbiter Atlas">
+  <meta property="og:description" content="Interactive 3D atlas of NASA Lunar Orbiter photographs (1966–1967).">
+  <meta property="og:image" content="assets/screens/atlas.webp">
+  <link rel="icon" href="assets/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="wordmark" href="./">
+      <img src="assets/logo.svg" alt="" width="40" height="40">
+      <span>LUNAR ORBITER<br>ATLAS</span>
+    </a>
+    <nav class="topnav" aria-label="Sections">
+      <a href="#features"><span data-l="en">Features</span><span data-l="es">Funciones</span></a>
+      <a href="#gallery"><span data-l="en">Gallery</span><span data-l="es">Galería</span></a>
+      <a href="#run"><span data-l="en">Run it</span><span data-l="es">Ejecutar</span></a>
+      <a href="https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS">GitHub ↗</a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Language / Idioma">
+      <button type="button" data-set-lang="es">ES</button>
+      <button type="button" data-set-lang="en">EN</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="eyebrow">
+        <span data-l="en">NASA · LUNAR ORBITER 1–5 · 1966—1967</span>
+        <span data-l="es">NASA · LUNAR ORBITER 1–5 · 1966—1967</span>
+      </div>
+      <h1>
+        <span data-l="en">890 Lunar Orbiter frames, on the Moon where they were taken.</span>
+        <span data-l="es">890 fotogramas de los Lunar Orbiter, sobre la Luna donde se tomaron.</span>
+      </h1>
+      <p class="lead">
+        <span data-l="en">A local web app that places the 890 frames of the five Lunar Orbiter missions on an interactive 3D Moon, with the spacecraft and lighting data published by the Lunar and Planetary Institute.</span>
+        <span data-l="es">Una app web local que coloca los 890 fotogramas de las cinco misiones Lunar Orbiter sobre una Luna 3D interactiva, con los datos de nave e iluminación que publica el Lunar and Planetary Institute.</span>
+      </p>
+      <div class="actions">
+        <a class="button" href="#run"><span data-l="en">Run it locally</span><span data-l="es">Ejecutar en local</span></a>
+        <a class="button button--ghost" href="https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS"><span data-l="en">Source code ↗</span><span data-l="es">Código fuente ↗</span></a>
+      </div>
+      <figure class="hero-shot">
+        <img src="assets/screens/atlas.webp" width="1440" height="900"
+             alt="Lunar Orbiter Atlas: a 3D Moon with the mission 1 photos along the equator and the details of frame 1041">
+      </figure>
+    </section>
+
+    <section id="features" class="section">
+      <h2><span data-l="en">What it does</span><span data-l="es">Qué hace</span></h2>
+      <div class="cards">
+        <article class="card">
+          <h3><span data-l="en">Mission mosaic</span><span data-l="es">Mosaico por misión</span></h3>
+          <p><span data-l="en">Choose a mission and all its frames appear on the globe at their principal point, sized from the spacecraft altitude. Drag to rotate, scroll to zoom.</span><span data-l="es">Elige una misión y todos sus fotogramas aparecen sobre la esfera en su punto principal, con un tamaño según la altitud de la nave. Arrastra para girar y usa la rueda para acercarte.</span></p>
+        </article>
+        <article class="card">
+          <h3><span data-l="en">Click to hide</span><span data-l="es">Click para ocultar</span></h3>
+          <p><span data-l="en">Clicking a photo hides it and opens its LPI preview, principal point, spacecraft position and illumination angles. One button brings the hidden photos back.</span><span data-l="es">Al hacer click en una foto se oculta y se abren su vista previa del LPI, el punto principal, la posición de la nave y los ángulos de iluminación. Un botón recupera las ocultas.</span></p>
+        </article>
+        <article class="card">
+          <h3><span data-l="en">Moon and program facts</span><span data-l="es">Datos de la Luna y del programa</span></h3>
+          <p><span data-l="en">Two reference tabs summarise the Moon and the Lunar Orbiter program: key figures, the camera, and each mission's dates.</span><span data-l="es">Dos pestañas resumen la Luna y el programa Lunar Orbiter: cifras clave, la cámara y las fechas de cada misión.</span></p>
+        </article>
+        <article class="card">
+          <h3><span data-l="en">English and Spanish</span><span data-l="es">Inglés y español</span></h3>
+          <p><span data-l="en">The whole interface is bilingual and remembers your choice. Downloads are cached on disk, so each mission is fetched from the archive only once.</span><span data-l="es">Toda la interfaz es bilingüe y recuerda tu elección. Las descargas se guardan en disco, así que cada misión se pide al archivo una sola vez.</span></p>
+        </article>
+      </div>
+    </section>
+
+    <section id="gallery" class="section">
+      <h2><span data-l="en">Gallery</span><span data-l="es">Galería</span></h2>
+      <div class="gallery">
+        <figure>
+          <img src="assets/screens/mission-4.webp" width="1440" height="900" loading="lazy"
+               alt="Mission 4 frames covering the whole near side of the Moon">
+          <figcaption><span data-l="en">Lunar Orbiter 4 mapped the entire near side from a high polar orbit.</span><span data-l="es">El Lunar Orbiter 4 cartografió toda la cara visible desde una órbita polar alta.</span></figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screens/moon.webp" width="1440" height="900" loading="lazy"
+               alt="The Moon tab with a summary and fact cards">
+          <figcaption><span data-l="en">The Moon: summary and key figures.</span><span data-l="es">La Luna: resumen y cifras clave.</span></figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screens/program.webp" width="1440" height="900" loading="lazy"
+               alt="The Lunar Orbiter program tab with facts and the mission log">
+          <figcaption><span data-l="en">The program: facts and mission log.</span><span data-l="es">El programa: datos y diario de misiones.</span></figcaption>
+        </figure>
+        <figure class="gallery-mobile">
+          <img src="assets/screens/mobile.webp" width="780" height="1688" loading="lazy"
+               alt="The app on a phone-sized screen">
+          <figcaption><span data-l="en">Works on small screens too.</span><span data-l="es">También funciona en pantallas pequeñas.</span></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="run" class="section">
+      <h2><span data-l="en">Run it locally</span><span data-l="es">Ejecutar en local</span></h2>
+      <p>
+        <span data-l="en">The atlas is a Python (Dash) app that downloads from the LPI archive as you browse, so it runs on your machine rather than on this page. You need Python 3.10 or later on Linux or macOS.</span>
+        <span data-l="es">El atlas es una app Python (Dash) que descarga del archivo LPI según navegas, así que se ejecuta en tu equipo y no en esta página. Necesitas Python 3.10 o posterior en Linux o macOS.</span>
+      </p>
+      <pre><code>git clone https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS.git
+cd LUNAR-ORBITER-ATLAS
+make install
+make run</code></pre>
+      <p>
+        <span data-l="en">Then open <a href="http://127.0.0.1:8050/">http://127.0.0.1:8050/</a>. The port and default language are set in <code>config.json</code>.</span>
+        <span data-l="es">Después abre <a href="http://127.0.0.1:8050/">http://127.0.0.1:8050/</a>. El puerto y el idioma por defecto se configuran en <code>config.json</code>.</span>
+      </p>
+    </section>
+
+    <section class="section credits">
+      <h2><span data-l="en">Sources and licences</span><span data-l="es">Fuentes y licencias</span></h2>
+      <ul>
+        <li><span data-l="en">Images and frame metadata:</span><span data-l="es">Imágenes y metadatos de los fotogramas:</span> <a href="https://www.lpi.usra.edu/resources/lunarorbiter/">Lunar and Planetary Institute — Lunar Orbiter Photo Gallery</a>. <span data-l="en">Screenshots on this page include LPI images, which belong to their owners.</span><span data-l="es">Las capturas de esta página incluyen imágenes del LPI, que pertenecen a sus titulares.</span></li>
+        <li><span data-l="en">Reference text summarised from Wikipedia</span><span data-l="es">Texto de referencia resumido de Wikipedia</span> (<a href="https://es.wikipedia.org/wiki/Luna">Luna</a>, <a href="https://en.wikipedia.org/wiki/Lunar_Orbiter_program">Lunar Orbiter program</a>), <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.</li>
+        <li><span data-l="en">Code:</span><span data-l="es">Código:</span> <a href="https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS/blob/main/LICENSE">MIT</a> © 2026 <a href="https://www.energycode.org/">ENERGYCODE</a>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footbar">
+    <span>LUNAR ORBITER ATLAS · <a href="https://www.energycode.org/">ENERGYCODE</a></span>
+    <span><a href="https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS">GITHUB ↗</a></span>
+  </footer>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>

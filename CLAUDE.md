@@ -51,6 +51,14 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - `scripts/run.sh` — crea `.venv` si falta y para una instancia previa del visor
   que ocupe el puerto (nunca otros programas).
 - `.github/workflows/ci.yml` — ruff + pytest con Python 3.10 y 3.14.
+- `orbiter/assets/logo.svg` — logo (Luna gris, órbita y sonda naranjas sobre fondo
+  oscuro). `make icons` (`scripts/build_icons.sh`, usa Chromium + Pillow) genera
+  `favicon.ico`, `icon-192.png` y `apple-touch-icon.png` y los copia a `site/assets/`.
+  No edites los PNG/ICO a mano: cambia el SVG y regenera.
+- `site/` — página estática del proyecto para GitHub Pages (`pages.yml` la publica;
+  en GitHub: Settings → Pages → Source: GitHub Actions). HTML bilingüe con
+  `data-l="en|es"` y `assets/site.js`; capturas en `site/assets/screens/` (WebP).
+  No puede ejecutar la app (necesita servidor Python).
 
 ## Convenciones
 

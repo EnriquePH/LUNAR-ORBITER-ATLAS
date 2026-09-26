@@ -4,7 +4,10 @@ A local web app for exploring the photographs of NASA's Lunar Orbiter missions
 (1966–1967) on an interactive 3D Moon. Images and metadata come from the
 [Lunar and Planetary Institute (LPI) Lunar Orbiter Photo Gallery](https://www.lpi.usra.edu/resources/lunarorbiter/).
 
-Repository: <https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS>
+<img src="orbiter/assets/logo.svg" alt="" width="72" align="right">
+
+Repository: <https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS> ·
+Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
 
 ## Features
 
@@ -88,6 +91,7 @@ make test     # pytest
 make lint     # Ruff lint and format check
 make format   # apply Ruff fixes and formatting
 make check    # lint + test
+make icons    # render favicon and PNG icons from the logo
 make help     # list all targets
 ```
 
@@ -106,7 +110,9 @@ Project layout:
 | `orbiter/reference.py`     | Moon and Lunar Orbiter program tabs                 |
 | `orbiter/config.py`        | `config.json` loader                                |
 | `orbiter/assets/style.css` | Styles (served automatically by Dash)               |
+| `orbiter/assets/logo.svg`  | Logo; `make icons` renders the favicon and PNG icons |
 | `scripts/run.sh`           | Launch script used by `make run`                    |
+| `site/`                    | Static project page, deployed to GitHub Pages       |
 
 ## License
 
@@ -130,3 +136,11 @@ Atlas_, version 0.1.0**. GitHub can generate a formatted citation from
 For photographs or metadata, cite the Lunar and Planetary Institute's Lunar
 Orbiter Photo Gallery and the individual frame record used. The software
 citation does not replace image attribution or the LPI's usage terms.
+
+## Project page
+
+`site/` is a static, bilingual page about the project, published by the
+`Pages` workflow on every push to `main` that touches it. Enable it once in
+the repository settings: **Settings → Pages → Source: GitHub Actions**. The page
+cannot run the atlas itself, which needs a Python server; it links to the
+instructions above. Its screenshots live in `site/assets/screens/`.

@@ -120,7 +120,27 @@ FONTS_URL = (
 app = Dash(
     __name__, external_stylesheets=[FONTS_URL], suppress_callback_exceptions=True
 )
-app.title = "Lunar Orbiter | Atlas"
+app.title = "Lunar Orbiter Atlas"
+# Dash's default page plus the SVG and touch icons (favicon.ico is automatic).
+app.index_string = """<!DOCTYPE html>
+<html>
+    <head>
+        {%metas%}
+        <title>{%title%}</title>
+        {%favicon%}
+        <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+        <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+        {%css%}
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>"""
 
 
 def language_from_search(search: str | None) -> str:
@@ -303,7 +323,11 @@ def serve_layout(lang: str) -> html.Div:
                 [
                     html.Div(
                         [
-                            html.Div("LO", className="brand-mark"),
+                            html.Img(
+                                src=app.get_asset_url("logo.svg"),
+                                alt="",
+                                className="brand-logo",
+                            ),
                             html.Div(
                                 ["LUNAR ORBITER", html.Br(), t(lang, "brand_subtitle")],
                                 className="brand-copy",

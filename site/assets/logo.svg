@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Lunar Orbiter Atlas">
+  <title>Lunar Orbiter Atlas</title>
+  <rect width="64" height="64" rx="13" fill="#151617"/>
+  <!-- Far side of the orbit, hidden behind the Moon where they overlap. -->
+  <path d="M8 40 A26 8.5 -24 0 1 56 24" fill="none" stroke="#ff7547" stroke-width="1.6" stroke-opacity=".45"/>
+  <circle cx="32" cy="32" r="18" fill="#c9c6bf"/>
+  <!-- Maria and craters. -->
+  <path d="M21 25c3-5 9-6 12-3 2 2 0 5-3 6-4 1-8 1-9-3z" fill="#8f8c86"/>
+  <path d="M34 34c3-2 8-1 9 2s-2 6-6 6c-3 0-5-4-3-8z" fill="#8f8c86"/>
+  <circle cx="40" cy="24" r="2.4" fill="#a3a09a"/>
+  <circle cx="25" cy="40" r="2" fill="#a3a09a"/>
+  <!-- Terminator shadow on the right limb. -->
+  <path d="M38 15.1A18 18 0 0 1 38 48.9 22 22 0 0 0 38 15.1z" fill="#101112" fill-opacity=".35"/>
+  <!-- Near side of the orbit and the spacecraft. -->
+  <path d="M56 24 A26 8.5 -24 0 1 8 40" fill="none" stroke="#ff7547" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="52.4" cy="33.2" r="3.6" fill="#ff7547" stroke="#151617" stroke-width="1.6"/>
+</svg>

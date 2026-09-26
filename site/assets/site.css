@@ -1,0 +1,102 @@
+/* Lunar Orbiter Atlas project page — same palette and type as the app. */
+:root {
+  --bg: #101112;
+  --panel: #151617;
+  --line: #333537;
+  --line-soft: #292b2c;
+  --text: #e6e3dd;
+  --muted: #aaa7a0;
+  --faint: #777973;
+  --accent: #ff7547;
+  --accent-soft: #ff8a61;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 14px/1.7 'DM Mono', ui-monospace, monospace;
+}
+a { color: var(--accent-soft); }
+a:hover { color: #ffc1aa; }
+img { max-width: 100%; height: auto; display: block; }
+
+/* One language at a time; site.js sets data-lang on <html>. */
+html[data-lang="en"] [data-l="es"],
+html[data-lang="es"] [data-l="en"] { display: none !important; }
+
+.topbar, main, .footbar { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+.topbar {
+  display: flex; align-items: center; gap: 24px;
+  padding-top: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line);
+}
+.wordmark {
+  display: flex; align-items: center; gap: 12px; margin-right: auto;
+  color: var(--muted); text-decoration: none; font-size: 10px; letter-spacing: 1px; line-height: 1.6;
+}
+.topnav { display: flex; gap: 20px; }
+.topnav a { color: var(--muted); text-decoration: none; font-size: 11px; letter-spacing: .6px; text-transform: uppercase; }
+.topnav a:hover { color: var(--text); }
+.lang-switch { display: flex; border: 1px solid var(--line); }
+.lang-switch button {
+  border: 0; background: none; color: var(--muted); cursor: pointer;
+  padding: 6px 9px; font: 400 10px 'DM Mono', monospace; letter-spacing: .7px;
+}
+.lang-switch button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+
+.hero { padding: 56px 0 24px; }
+.eyebrow { color: var(--accent-soft); font-size: 10px; letter-spacing: 1.2px; }
+h1 { margin: 10px 0 0; max-width: 900px; font-size: clamp(26px, 4.4vw, 44px); font-weight: 500; line-height: 1.2; letter-spacing: -.5px; }
+.lead { max-width: 760px; margin: 18px 0 0; color: #cfccc5; font-size: 15px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.button {
+  display: inline-block; padding: 11px 16px; border-radius: 2px; text-decoration: none;
+  background: var(--accent); color: #141414; font-size: 12px; font-weight: 500;
+}
+.button:hover { background: #ff946f; color: #141414; }
+.button--ghost { background: none; color: var(--text); border: 1px solid var(--line); }
+.button--ghost:hover { background: none; color: var(--accent-soft); border-color: var(--accent); }
+.hero-shot { margin: 40px 0 0; border: 1px solid var(--line); }
+
+.section { padding: 48px 0 8px; border-top: 1px solid var(--line); margin-top: 40px; }
+h2 { margin: 0 0 22px; font-size: 20px; font-weight: 500; }
+h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; color: var(--text); }
+.section > p { max-width: 760px; color: #cfccc5; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); padding: 20px; }
+.card p { margin: 0; color: var(--muted); font-size: 13px; }
+
+.gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.gallery figure { margin: 0; }
+.gallery img { border: 1px solid var(--line); }
+.gallery figcaption { margin-top: 8px; color: var(--faint); font-size: 11px; }
+.gallery-mobile img { max-height: 520px; width: auto; margin: 0 auto; }
+
+pre {
+  overflow-x: auto; margin: 18px 0; padding: 18px 20px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--text); font-size: 13px;
+}
+code { font-family: inherit; }
+p code { color: var(--accent-soft); }
+
+.credits ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+.credits li { margin-bottom: 8px; }
+
+.footbar {
+  display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  margin-top: 48px; padding-top: 16px; padding-bottom: 28px; border-top: 1px solid var(--line);
+  color: var(--faint); font-size: 10px; letter-spacing: .6px;
+}
+.footbar a { color: var(--faint); }
+
+@media (max-width: 760px) {
+  .topbar { flex-wrap: wrap; gap: 14px; }
+  .topnav { order: 3; width: 100%; gap: 16px; flex-wrap: wrap; }
+  .gallery { grid-template-columns: minmax(0, 1fr); }
+  .hero { padding-top: 36px; }
+}

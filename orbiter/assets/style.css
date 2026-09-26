@@ -5,7 +5,7 @@ button, input { font: inherit; }
 .app-shell { max-width: 1600px; margin: 0 auto; padding: 26px 42px 20px; }
 .topbar { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333537; padding: 0 0 18px; }
 .wordmark { display:flex; gap:13px; align-items:center; }
-.brand-mark { font: 500 12px 'DM Mono',monospace; color:#101112; background:#ff7547; padding:9px 8px; }
+.brand-logo { display:block; width:40px; height:40px; }
 .brand-copy { font: 10px 'DM Mono',monospace; letter-spacing:1px; line-height:1.7; color:#aaa7a0; }
 .top-meta { font: 10px 'DM Mono',monospace; color:#aaa7a0; letter-spacing:.7px; }
 .page-title { display:flex; justify-content:space-between; align-items:end; padding:26px 0 16px; }

@@ -34,11 +34,16 @@
       al tope de 30° y forman un mapa de cobertura de la cara visible; misión 5
       mezcla 130 primeros planos (~100–130 km) y 30 tomas altas de la cara oculta.
       `MAX_PATCH_DEGREES` se mantiene en 30°. Etiquetas N/S separadas del limbo.
+- [x] Logo (`orbiter/assets/logo.svg`), favicon e iconos (`make icons`); logo en la
+      barra superior de la app.
+- [x] Página del proyecto en `site/` para GitHub Pages (bilingüe, capturas, cómo
+      ejecutarla, fuentes y licencias) y workflow `pages.yml`.
 
 ## Pendiente
 
-- [ ] Comprobar la primera ejecución de la CI en GitHub: requiere hacer push
-      (en local pasan los tests con Python 3.10 y 3.14).
+
+- [ ] Hacer push y comprobar la primera ejecución de la CI y del despliegue de
+      Pages (activar antes Settings → Pages → Source: GitHub Actions).
 - [ ] Texturas más nítidas para las fotos grandes (misión 4 y tomas altas): hoy
       todas usan 20 px (`TILE_SIZE`). Escalar la resolución con el tamaño del
       parche sin disparar el peso de la figura (la misión 4 entera pesa hoy
