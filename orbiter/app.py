@@ -14,7 +14,9 @@ from PIL import Image
 from orbiter.catalog import MissionLoader, TileStore, default_cache_dir
 from orbiter.config import load_config
 from orbiter.globe import (
+    HIGH_ALTITUDE_KM,
     GlobeImage,
+    camera_of,
     format_coordinates,
     image_at,
     make_globe,
@@ -54,6 +56,10 @@ def globe_image(frame: OrbiterFrame) -> GlobeImage:
         longitude=frame.longitude,
         altitude_km=frame.spacecraft_altitude_km,
         texture=np.asarray(_thumbnail(frame.image_bytes), dtype=np.uint8),
+        spacecraft_latitude=frame.spacecraft_latitude,
+        spacecraft_longitude=frame.spacecraft_longitude,
+        emission_angle=frame.emission_angle,
+        camera=camera_of(frame.image_url),
     )
 
 
@@ -107,6 +113,12 @@ def metadata_rows(frame: OrbiterFrame, lang: str = "es") -> list[html.Div]:
             _degrees(frame.incidence_angle, frame.emission_angle),
         ),
         _metadata_row(t(lang, "meta_phase"), _degrees(frame.phase_angle)),
+        *(
+            [html.P(t(lang, "note_high_altitude"), className="meta-note")]
+            if frame.spacecraft_altitude_km is not None
+            and frame.spacecraft_altitude_km > HIGH_ALTITUDE_KM
+            else []
+        ),
     ]
 
 
@@ -178,6 +190,13 @@ def _atlas(lang: str) -> html.Main:
                         figure=make_globe(),
                         className="globe-render",
                         config={"displayModeBar": False, "responsive": True},
+                    ),
+                    html.Div(
+                        [
+                            html.Span(className="legend-swatch"),
+                            t(lang, "legend_high_altitude", km=int(HIGH_ALTITUDE_KM)),
+                        ],
+                        className="globe-legend",
                     ),
                     html.Div(t(lang, "globe_note"), className="globe-coordinates"),
                 ],

@@ -31,7 +31,7 @@ import numpy as np
 import requests
 from PIL import Image
 
-from orbiter.globe import MAX_TILE_PIXELS, GlobeImage
+from orbiter.globe import MAX_TILE_PIXELS, GlobeImage, camera_of
 from orbiter.lpi import USER_AGENT, fetch_mission_frames, parse_frame_page
 from orbiter.urls import ORBITER_URL, frame_url
 
@@ -150,6 +150,10 @@ class TileStore:
             longitude=float(metadata["longitude"]),
             altitude_km=metadata.get("spacecraft_altitude_km"),
             texture=_texture(image_bytes),
+            spacecraft_latitude=metadata.get("spacecraft_latitude"),
+            spacecraft_longitude=metadata.get("spacecraft_longitude"),
+            emission_angle=metadata.get("emission_angle"),
+            camera=camera_of(str(metadata["image_url"])),
         )
 
 

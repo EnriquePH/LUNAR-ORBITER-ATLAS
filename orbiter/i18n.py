@@ -24,7 +24,13 @@ TEXTS: dict[str, dict[str, str]] = {
         "tab_program": "Programa Lunar Orbiter",
         "globe_label": "VISTA 3D  /  ARRASTRA PARA ROTAR · CLICK EN UNA FOTO PARA "
         "OCULTARLA",
-        "globe_note": "POSICIÓN Y TAMAÑO APROXIMADOS · ORIENTACIÓN NORTE ARRIBA",
+        "globe_note": "PROYECTADAS DESDE LA NAVE · ORIENTACIÓN ESTIMADA",
+        "legend_high_altitude": "TOMA DE GRAN ALTITUD (> {km} KM)",
+        "note_high_altitude": (
+            "Toma de gran altitud: cubre una zona amplia y se proyecta sobre la "
+            "parte de la Luna que fotografió. Su orientación se estima a partir "
+            "del borde de la Luna visible en la imagen."
+        ),
         "archive_kicker": "ARCHIVO DE IMÁGENES",
         "frame_heading": "Fotograma",
         "mission_placeholder": "MISIÓN",
@@ -77,7 +83,13 @@ TEXTS: dict[str, dict[str, str]] = {
         "tab_moon": "The Moon",
         "tab_program": "Lunar Orbiter program",
         "globe_label": "3D VIEW  /  DRAG TO ROTATE · CLICK A PHOTO TO HIDE IT",
-        "globe_note": "APPROXIMATE POSITION AND SIZE · NORTH UP",
+        "globe_note": "PROJECTED FROM THE SPACECRAFT · ORIENTATION ESTIMATED",
+        "legend_high_altitude": "HIGH-ALTITUDE FRAME (> {km} KM)",
+        "note_high_altitude": (
+            "High-altitude frame: it covers a wide area and is projected onto the "
+            "part of the Moon it photographed. Its orientation is estimated from "
+            "the lunar limb visible in the image."
+        ),
         "archive_kicker": "IMAGE ARCHIVE",
         "frame_heading": "Frame",
         "mission_placeholder": "MISSION",

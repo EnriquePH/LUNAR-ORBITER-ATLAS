@@ -44,11 +44,13 @@
       1–3 pesan un 32–70 % menos; las fotos grandes pasan de 20 a 48 px (30 px en la
       misión 4, que va al tope: 87 000 vértices, 5,4 MB de figura). Coste medido:
       +0,17 s en servidor y +0,3–0,6 s de redibujado con render por software.
+- [x] Fotos proyectadas desde la nave sobre la parte de la Luna que fotografiaron
+      (cámara de 80 mm o 610 mm según la vista previa; validado con 890 fotos, 22
+      con metadatos incoherentes usan el parche). Orientación estimada: oblicuas con
+      horizonte arriba; gran altitud girada según el cielo de la imagen. Contorno y
+      aviso para tomas de más de 1000 km. S del polo sur a la misma distancia que N.
+- [x] Badges en el README.
 
 ## Pendiente
 
-
-- [ ] Hacer push y comprobar la primera ejecución de la CI y del despliegue de
-      Pages (activar antes Settings → Pages → Source: GitHub Actions).
-- [ ] Las tomas oblicuas de gran altitud (p. ej. las de la Tierra de las misiones
-      1–3) quedan deformadas: valorar marcarlas u ocultarlas por defecto.
+- [ ] Hacer push y comprobar la primera ejecución de la CI y del despliegue de Pages.

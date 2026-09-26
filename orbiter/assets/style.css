@@ -16,6 +16,9 @@ h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
 .globe-panel { position:relative; min-width:0; min-height:590px; overflow:hidden; background:radial-gradient(ellipse at 50% 53%,#252626 0,#151617 45%,#101112 75%); }
 .globe-label { position:absolute; top:19px; left:20px; z-index:2; font:10px 'DM Mono',monospace; color:#aaa7a0; letter-spacing:.7px; pointer-events:none; }
 .globe-coordinates { position:absolute; right:20px; bottom:17px; z-index:2; font:10px 'DM Mono',monospace; color:#777973; pointer-events:none; }
+.globe-legend { position:absolute; left:20px; bottom:17px; z-index:2; display:flex; align-items:center; gap:8px; font:10px 'DM Mono',monospace; color:#8fb3c9; pointer-events:none; }
+.legend-swatch { width:18px; height:0; border-top:2px solid #8fb3c9; }
+.meta-note { margin:12px 0 0; padding:9px 10px; border-left:2px solid #8fb3c9; background:#8fb3c914; color:#cfccc5; font:10px/1.6 'DM Mono',monospace; }
 .globe-render { width:100%; height:590px; }
 .side-panel { border-left:1px solid #333537; padding:22px 0 22px 24px; display:flex; flex-direction:column; gap:18px; }
 .side-heading { margin:0; font:500 19px 'DM Mono',monospace; }

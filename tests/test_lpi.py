@@ -171,3 +171,12 @@ def test_fetch_frame_reuses_cached_result(monkeypatch):
 
     assert first_result is second_result
     assert len(calls) == 2
+
+
+def test_parse_frame_page_prefers_the_middle_high_resolution_plate():
+    page = FULL_FRAME_PAGE.replace(
+        '&nbsp; 1041_med <a href="../images/preview/1041_med.jpg">Preview JPG</a>',
+        '&nbsp; 1041_h2 <a href="../images/preview/1041_h2.jpg">Preview JPG</a>',
+    )
+
+    assert parse_frame_page("1041", page)["image_url"].endswith("/1041_h2.jpg")

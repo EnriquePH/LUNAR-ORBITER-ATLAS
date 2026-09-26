@@ -1,5 +1,13 @@
 # Lunar Orbiter Atlas
 
+[![CI](https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS/actions/workflows/ci.yml/badge.svg)](https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS/actions/workflows/ci.yml)
+[![Pages](https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS/actions/workflows/pages.yml/badge.svg)](https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS/actions/workflows/pages.yml)
+[![Project page](https://img.shields.io/badge/project%20page-GitHub%20Pages-ff7547)](https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab)](pyproject.toml)
+[![Dash](https://img.shields.io/badge/built%20with-Dash%20%2B%20Plotly-3f4f75)](https://dash.plotly.com/)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 A local web app for exploring the photographs of NASA's Lunar Orbiter missions
 (1966–1967) on an interactive 3D Moon. Images and metadata come from the
 [Lunar and Planetary Institute (LPI) Lunar Orbiter Photo Gallery](https://www.lpi.usra.edu/resources/lunarorbiter/).
@@ -11,19 +19,39 @@ Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
 
 ## Features
 
-- **Mission mosaic** — every frame of the selected mission is drawn on the
-  globe at its principal point, sized from the spacecraft altitude. Click a
-  photo to hide it and show its details; **Show hidden** brings them back.
+- **Mission mosaic** — every frame of the selected mission is projected onto
+  the part of the Moon it photographed. Click a photo to hide it and show its
+  details; **Show hidden** brings them back.
 - **Frame details** — LPI preview, principal point, spacecraft altitude and
   position, and illumination angles (sun azimuth, incidence, emission, phase).
 - **Reference tabs** — summarised facts about the Moon and the Lunar Orbiter
   program, with their Wikipedia sources.
 - **English and Spanish** — switch with the **ES | EN** control in the top bar
   (or open `?lang=en` / `?lang=es`).
-- Equator and north/south poles are marked on the globe.
+- Equator and north/south poles are marked on the globe; frames taken above
+  1000 km are outlined and flagged in the side panel.
 
-Photo placement is approximate: each frame is a north-up patch centred on its
-principal point, not a map-projected mosaic.
+### How photos are placed
+
+Each frame is projected from the spacecraft: every pixel becomes a ray from
+the spacecraft position published by the LPI, through the camera, aimed at the
+principal point, and lands where that ray meets the Moon. Oblique and
+high-altitude shots therefore cover the area they really saw, and pixels that
+look past the limb are dropped.
+
+- **Camera.** The thumbnail shows the medium-resolution frame (80 mm lens,
+  55 × 65 mm) when the gallery has one, otherwise the middle third of the
+  high-resolution frame (610 mm lens). From 46 km the model covers
+  31.7 × 37.5 km, matching the documented 31.6 × 37.4 km.
+- **Check.** For 890 frames the emission angle implied by the spacecraft
+  position matches the LPI's (median error 0.06°). The 22 frames whose metadata
+  disagree by more than 5° fall back to a simple north-up patch.
+- **Orientation.** The image's rotation is not published. Near-vertical frames
+  are drawn north-up and oblique ones level with the horizon at the top, as the
+  gallery shows them. High-altitude frames that see the limb are turned so their
+  off-Moon pixels land on the black sky in the image.
+- **Limits.** Terrain relief and lens distortion are ignored; positions are as
+  good as the published metadata.
 
 ## Quick start
 

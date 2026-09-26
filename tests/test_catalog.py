@@ -57,6 +57,7 @@ def test_tile_store_downloads_once_then_reads_disk(store, session, tmp_path):
     cached = again.load("1041")
 
     assert (tile.latitude, tile.longitude, tile.altitude_km) == (3.3, 39.15, 256.43)
+    assert (tile.spacecraft_latitude, tile.spacecraft_longitude) == (4.29, 41.17)
     assert max(tile.texture.shape) <= max(TILE_SIZE)
     assert session.urls[-1] == thumbnail_url("1041")
     assert offline.urls == []

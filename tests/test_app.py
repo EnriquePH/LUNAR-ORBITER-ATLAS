@@ -80,7 +80,11 @@ def loader(monkeypatch):
 
 
 def _row_values(rows) -> dict[str, str]:
-    return {row.children[0].children: row.children[1].children for row in rows}
+    return {
+        row.children[0].children: row.children[1].children
+        for row in rows
+        if row.className == "meta-row"
+    }
 
 
 def test_globe_image_limits_texture_size():
@@ -300,3 +304,13 @@ def test_language_from_search_falls_back_to_config(search, lang):
 def test_render_page_uses_query_string_language():
     assert "Lunar orbital atlas" in str(render_page("?lang=en"))
     assert "Atlas orbital lunar" in str(render_page("?foo=1"))
+
+
+def test_metadata_rows_flag_high_altitude_frames():
+    high = _row_values(metadata_rows(_frame(spacecraft_altitude_km=2900.0), "en"))
+    rows = metadata_rows(_frame(spacecraft_altitude_km=2900.0), "en")
+    low = metadata_rows(_frame(spacecraft_altitude_km=46.0), "en")
+
+    assert high["SPACECRAFT ALTITUDE"] == "2900.00 km"
+    assert "High-altitude frame" in str(rows[-1])
+    assert all("High-altitude" not in str(row) for row in low)

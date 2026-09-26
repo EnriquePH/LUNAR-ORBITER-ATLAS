@@ -134,8 +134,9 @@ def _optional_number(section: str, label: str) -> float | None:
 def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
     """Extract mission, coordinates, illumination and preview URL from a page.
 
-    The preview prefers the medium-resolution JPEG (``_med``) and falls back to
-    a high-resolution plate (``_h1``–``_h3``); its URL is made absolute.
+    The preview prefers the medium-resolution JPEG (``_med``), then the middle
+    high-resolution sub-frame (``_h2``), then any other plate; its URL is made
+    absolute. That order matches the image the gallery thumbnail shows.
 
     Args:
         frame_id: Frame identifier the page belongs to, e.g. ``"1041"``.
@@ -171,8 +172,16 @@ def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
     if not image_urls:
         raise LpiError("no_preview", frame_id=frame_id)
 
+    # Prefer the image the LPI thumbnail shows: the medium-resolution frame, or
+    # else the middle high-resolution sub-frame (h2), centred like the frame.
     image_url = next(
-        (url for url in image_urls if url.endswith("_med.jpg")), image_urls[0]
+        (
+            url
+            for suffix in ("_med.jpg", "_h2.jpg")
+            for url in image_urls
+            if url.lower().endswith(suffix)
+        ),
+        image_urls[0],
     )
     image_url = urljoin(frame_url(frame_id), image_url)
 

@@ -1,3 +1,6 @@
+import math
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -7,14 +10,20 @@ from orbiter.globe import (
     MAX_TILE_PIXELS,
     MESH_VERTEX_BUDGET,
     MIN_TILE_PIXELS,
+    MOON_RADIUS_KM,
     GlobeImage,
+    _patch_grid,
+    _rolled,
     _to_cartesian,
+    camera_of,
     format_coordinates,
+    frame_camera,
     image_at,
     make_globe,
     patch_contains,
     patch_width_degrees,
     tile_textures,
+    to_latitude_longitude,
     visible_images,
 )
 
@@ -90,6 +99,7 @@ def test_make_globe_marks_poles_and_equator():
     traces = {trace.name: trace for trace in make_globe().data}
 
     assert list(traces["poles"].text) == ["", "", "N", "S"]
+    assert list(traces["poles"].textposition)[2:] == ["top center", "bottom center"]
     assert list(traces["poles"].z) == [1.01, -1.01, 1.18, -1.18]
     assert np.allclose(traces["equator"].z, 0)
     assert traces["equator"].hoverinfo == traces["poles"].hoverinfo == "skip"
@@ -164,3 +174,119 @@ def test_tile_textures_respect_the_vertex_budget():
 
     assert sum(texture.size for texture in textures) <= MESH_VERTEX_BUDGET
     assert max(textures[0].shape) < MAX_TILE_PIXELS
+
+
+def _projected(
+    latitude=3.30, longitude=39.15, altitude_km=256.43, spacecraft=(4.29, 41.17)
+):
+    return GlobeImage(
+        frame_id="1041",
+        latitude=latitude,
+        longitude=longitude,
+        altitude_km=altitude_km,
+        texture=np.full((65, 55), 160, dtype=np.uint8),
+        spacecraft_latitude=spacecraft[0],
+        spacecraft_longitude=spacecraft[1],
+    )
+
+
+def _arc_km(first, second):
+    return math.acos(np.clip(first @ second, -1, 1)) * MOON_RADIUS_KM
+
+
+def test_projection_matches_the_documented_nadir_footprint():
+    x, y, z = _patch_grid(_projected(0, 0, 46, (0, 0)), 1.0)
+    points = np.stack([x, y, z], axis=-1)
+
+    # 31.6 x 37.4 km from 46 km for the medium-resolution camera.
+    assert _arc_km(points[32, 0], points[32, -1]) == pytest.approx(31.6, abs=0.3)
+    assert _arc_km(points[0, 27], points[-1, 27]) == pytest.approx(37.4, abs=0.3)
+
+
+def test_projection_centres_an_oblique_frame_on_its_principal_point():
+    x, y, z = _patch_grid(_projected(), 1.0)
+
+    latitude, longitude = to_latitude_longitude(x[32, 27], y[32, 27], z[32, 27])
+    assert (latitude, longitude) == pytest.approx((3.30, 39.15), abs=1e-6)
+
+
+def test_projection_drops_pixels_that_miss_the_moon():
+    x, _, _ = _patch_grid(_projected(0, 40, 1500, (0, 0)), 1.0)
+
+    assert 0 < np.isnan(x).sum() < x.size
+
+
+def test_frames_without_spacecraft_position_use_the_fallback_patch():
+    assert frame_camera(_image()) is None
+    assert frame_camera(_projected()) is not None
+
+
+def test_projected_frames_answer_clicks_by_what_the_camera_saw():
+    frame = _projected()
+
+    assert patch_contains(frame, 3.30, 39.15)
+    assert not patch_contains(frame, 3.30, 60.0)
+    assert not patch_contains(frame, -3.30, -140.85)  # far side
+
+
+def test_mesh_skips_triangles_off_the_moon_and_outlines_high_frames():
+    oblique = _projected(0, 40, 1500, (0, 0))
+    figure = make_globe(None, [oblique], ())
+    traces = {trace.name: trace for trace in figure.data}
+    mesh = next(trace for trace in figure.data if trace.type == "mesh3d")
+
+    faces = np.stack([mesh.i, mesh.j, mesh.k], axis=1)
+    x = np.asarray(mesh.x)
+    assert len(faces) < 2 * (x.size - 1)
+    assert np.isfinite(x).all()
+    assert "high-altitude" in traces
+    assert oblique.is_high_altitude
+    assert not _projected().is_high_altitude
+
+
+def test_inconsistent_metadata_falls_back_to_the_patch():
+    hidden_point = _projected(0, 60, 1500, (0, 0))  # past the limb
+    consistent = replace(_projected(), emission_angle=16.95)
+    contradicted = replace(_projected(), emission_angle=60.0)
+
+    assert frame_camera(hidden_point) is None
+    assert frame_camera(consistent) is not None
+    assert frame_camera(contradicted) is None
+
+
+def test_camera_of_reads_the_preview_kind():
+    assert camera_of("https://x/images/preview/1041_med.jpg") == "medium"
+    assert camera_of("https://x/images/preview/4100_h2.jpg") == "high"
+
+
+def test_high_resolution_camera_sees_a_narrower_field():
+    medium = frame_camera(_projected(0, 0, 2900, (0, 0)))
+    high = frame_camera(replace(_projected(0, 0, 2900, (0, 0)), camera="high"))
+
+    assert high.half_width == pytest.approx(medium.half_width * 80 / 610)
+
+
+def test_oblique_frames_are_level_with_the_horizon_up():
+    camera = frame_camera(_projected(0, 30, 100, (0, 33)))  # looking west
+    target = np.array(_to_cartesian(0, 30))
+
+    assert camera.up @ target > 0.5
+
+
+def test_high_altitude_frames_roll_to_match_a_black_sky():
+    frame = _projected(0, 40, 1500, (0, 0))
+    base = frame_camera(frame)
+    rolled = _rolled(base, 1)
+    height, width = frame.texture.shape
+    horizontal, vertical = np.meshgrid(
+        np.linspace(-rolled.half_width, rolled.half_width, width),
+        np.linspace(rolled.half_height, -rolled.half_height, height),
+    )
+    _, on_moon = rolled.hit_sphere(rolled.rays(horizontal, vertical))
+    texture = np.where(on_moon, 170, 5).astype(np.uint8)
+
+    camera = frame_camera(replace(frame, frame_id="sky", texture=texture))
+
+    assert np.allclose(camera.up, rolled.up)
+    low = replace(frame, frame_id="low", altitude_km=900.0, texture=texture)
+    assert not np.allclose(frame_camera(low).up, _rolled(frame_camera(low), 1).up)

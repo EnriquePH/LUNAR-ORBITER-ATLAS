@@ -31,14 +31,21 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   el `LOADER`), `poll_mosaic` (Interval), `hide_clicked_image`, `show_hidden`,
   `describe_hidden`, `select_frame`. Se prueban llamándolos directamente.
 - `orbiter/globe.py` — figura Plotly: esfera base, **todas las teselas en un único
-  `Mesh3d`** (200 `Surface` congelan el navegador), foto seleccionada como `Surface` a
-  más resolución, marcador, ecuador y polos N/S (`hoverinfo="skip"` para que no roben
-  clicks). Tamaño de cada foto según la altitud de la nave (`patch_width_degrees`).
-  El click se resuelve por geometría (`image_at`), no por índices de traza.
+  `Mesh3d`** (200 `Surface` congelan el navegador), foto seleccionada como `Surface`,
+  marcador, contorno de fotos de gran altitud (>`HIGH_ALTITUDE_KM`), ecuador y polos
+  (`hoverinfo="skip"` para no robar clicks).
+  **Proyección** (`frame_camera`): cámara estenopeica desde la posición de la nave hacia
+  el punto principal; cada píxel es un rayo que corta la esfera (NaN si no la toca).
+  Cámara según la vista previa (`camera_of`): `_med` → 80 mm, 55×65 mm; si no → 610 mm,
+  subfotograma central h2. Se rechaza (parche norte-arriba de respaldo) si la emisión
+  implicada difiere >5° de la del LPI. Giro: casi verticales norte arriba; oblicuas
+  niveladas con horizonte arriba; gran altitud: el giro de 90° cuyo «cielo» cae en
+  negro en la miniatura (`_match_sky`, reglas estrictas). Validado contra las 890
+  fotos: si cambias estas reglas, superpón el cielo predicho sobre las miniaturas
+  (p. ej. 5038, 5041, 1102, 2034, 4114) y compruébalo a ojo.
   Plotly colorea por vértice (1 píxel = 1 vértice): `tile_textures` reparte la
-  resolución según el tamaño de cada foto con un tope de `MESH_VERTEX_BUDGET`;
-  `TileStore` guarda miniaturas de hasta `MAX_TILE_PIXELS`. Mide el coste (tamaño
-  de `fig.to_json()` y `Plotly.react`) antes de subir esos límites.
+  resolución con un tope de `MESH_VERTEX_BUDGET`. El click se resuelve por geometría
+  (`patch_contains` → `FrameCamera.sees`), no por índices de traza.
 - `orbiter/catalog.py` — `MissionLoader` descarga en hilos todas las fotos de una
   misión; `TileStore` cachea página+miniatura en `data/lpi/` (escritura atómica,
   sin caducidad: se recarga borrando la carpeta), 3 workers con un límite
