@@ -22,8 +22,8 @@
 
 - [ ] Comprobar la primera ejecución de la CI en GitHub (en local pasan los tests
       con Python 3.10 y 3.14).
-- [ ] Probar las misiones 2–5 de principio a fin (solo la 1 y la 3 se han
-      descargado en real). Las misiones 4 y 5 tienen órbitas polares altas y fotos
+- [ ] Probar el mosaico de las misiones 2–5 (solo la 1 se ha descargado entera;
+      de la 3 solo se probó la lista de fotogramas). Las misiones 4 y 5 tienen órbitas polares altas y fotos
       mucho mayores: revisar cómo se ven y si hace falta ajustar `MAX_PATCH_DEGREES`.
 - [ ] Revisar con datos reales la aproximación del tamaño de cada foto
       (`FOOTPRINT_PER_ALTITUDE`), que asume toma vertical; las oblicuas quedan
