@@ -1,0 +1,41 @@
+# CLAUDE.md
+
+Visor local (Dash) de fotogramas del archivo Lunar Orbiter del LPI
+(<https://www.lpi.usra.edu/resources/lunarorbiter/>) proyectados sobre una esfera
+lunar 3D.
+
+## Comandos
+
+Usa siempre el entorno `.venv` (Python 3.14; el proyecto declara >=3.10):
+
+```bash
+.venv/bin/python -m pip install -e ".[dev]"   # instalar
+.venv/bin/python -m orbiter.app               # app en http://127.0.0.1:8050
+.venv/bin/pytest                              # tests
+.venv/bin/ruff check .                        # lint
+```
+
+## Estructura
+
+- `orbiter/urls.py` — constantes y constructores de URL del LPI (`mission_url`, `frame_url`).
+- `orbiter/lpi.py` — cliente HTTP + parser HTML (BeautifulSoup + regex sobre el texto).
+  `fetch_frame` valida el ID y delega en `_fetch_frame_cached` (`lru_cache(16)`).
+  Devuelve el dataclass inmutable `OrbiterFrame`.
+- `orbiter/app.py` — app Dash: CSS inline en `app.index_string`, layout, y dos callbacks
+  (`update_frame` descarga/renderiza; `rotate_globe` re-renderiza con azimut/elevación).
+  `make_globe` renderiza la esfera con matplotlib 3D en el servidor y devuelve un PNG
+  como data URL. Acepta un `OrbiterFrame` o el dict serializado en `dcc.Store("frame-data")`.
+- `tests/` — pytest; la red se simula con `monkeypatch` sobre `orbiter.lpi.requests.get`.
+- `LUNAR ORBITER.ipynb` — cuaderno exploratorio original (2020). Excluido de Ruff; no
+  modificar salvo petición expresa.
+
+## Convenciones
+
+- Textos de UI, mensajes de error y README en **español**; identificadores y docstrings en inglés.
+- Los tests nunca deben hacer peticiones reales al LPI. Como `_fetch_frame_cached` es
+  una caché global, usa IDs distintos por test o limpia la caché (`cache_clear()`).
+- No guardar imágenes descargadas en el repo (`/data/` y `/outputs/` están en `.gitignore`).
+  La licencia MIT cubre solo el código, no el material del LPI.
+- Sé conservador con peticiones al LPI (caché, timeouts, un fotograma por acción).
+- Ruff: `line-length = 88`, pero `E501` no está activado; reglas en `pyproject.toml`.
+- Un callback de Dash con N `Output` debe devolver siempre N valores (también en ramas de error).
