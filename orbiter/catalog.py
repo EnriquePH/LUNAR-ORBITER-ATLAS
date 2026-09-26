@@ -33,7 +33,12 @@ import requests
 from PIL import Image
 
 from orbiter.globe import MAX_TILE_PIXELS, GlobeImage, camera_of
-from orbiter.lpi import USER_AGENT, fetch_mission_frames, parse_frame_page
+from orbiter.lpi import (
+    USER_AGENT,
+    FrameMetadata,
+    fetch_mission_frames,
+    parse_frame_page,
+)
 from orbiter.urls import MISSIONS_NUM, ORBITER_URL, frame_url
 
 REQUEST_DELAY_SECONDS = 0.25
@@ -109,6 +114,19 @@ class TileStore:
         response = self._local.session.get(url, timeout=20)
         response.raise_for_status()
         return response
+
+    def metadata(self, frame_id: str) -> FrameMetadata | None:
+        """Return a frame's cached page metadata without downloading anything.
+
+        Returns:
+            The parsed page, or ``None`` if it is not cached.
+
+        Raises:
+            OSError: If the cached file cannot be read.
+            ValueError: If it is corrupt.
+        """
+        path = self.cache_dir / "frames" / f"{frame_id}.json"
+        return json.loads(path.read_text()) if path.exists() else None
 
     def load(self, frame_id: str) -> GlobeImage:
         """Return a frame's tile, downloading and caching what is missing.

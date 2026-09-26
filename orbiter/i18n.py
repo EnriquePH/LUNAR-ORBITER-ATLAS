@@ -25,6 +25,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "globe_label": "VISTA 3D  /  ARRASTRA PARA ROTAR · CLICK EN UNA FOTO PARA "
         "VER SUS DATOS",
         "globe_note": "PROYECTADAS DESDE LA NAVE · ORIENTACIÓN ESTIMADA",
+        "labels_toggle": "ETIQUETAS",
         "legend_high_altitude": "TOMA DE GRAN ALTITUD (> {km} KM)",
         "note_high_altitude": (
             "Toma de gran altitud: cubre una zona amplia y se proyecta sobre la "
@@ -37,6 +38,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "frame_placeholder": "FOTOGRAMA",
         "mosaic_preparing": "PREPARANDO MOSAICO…",
         "load_button": "Cargar ↗",
+        "random_button": "Al azar",
+        "random_title": "Cargar un fotograma al azar de la misión",
+        "export_label": "EXPORTAR MISIÓN",
+        "export_csv_title": "Metadatos de las fotos cargadas (CSV)",
+        "export_geojson_title": "Huellas proyectadas de las fotos cargadas (GeoJSON)",
         "connecting": "CONECTANDO CON EL ARCHIVO LPI…",
         "preview_alt": "Vista previa del fotograma Lunar Orbiter",
         "preview_caption": "VISTA PREVIA LPI",
@@ -52,6 +58,20 @@ TEXTS: dict[str, dict[str, str]] = {
         "meta_sun_azimuth": "ACIMUT SOLAR",
         "meta_incidence_emission": "INCIDENCIA / EMISIÓN",
         "meta_phase": "ÁNGULO DE FASE",
+        "meta_camera": "CÁMARA",
+        "camera_medium": "80 MM · RESOLUCIÓN MEDIA",
+        "camera_high": "610 MM · ALTA RESOLUCIÓN (CENTRO)",
+        "meta_footprint": "HUELLA EN EL SUELO",
+        "footprint_projected": "{width} × {height} km",
+        "footprint_approximate": "≈ {width} × {height} km (APROX.)",
+        "meta_emission_check": "EMISIÓN LPI / CALCULADA",
+        "emission_check": "{lpi}  /  {computed}  (Δ {delta})",
+        "emission_check_rejected": "{lpi}  /  {computed}  (Δ {delta} > {tolerance})",
+        "note_emission_rejected": (
+            "La emisión calculada con la posición de la nave no coincide con la "
+            "del LPI: la foto no se proyecta y se dibuja como un parche "
+            "aproximado orientado al norte."
+        ),
         "status_connection_error": "ERROR DE CONEXIÓN · {error}",
         "status_load_error": "NO SE PUDO CARGAR · {error}",
         "status_frame_loaded": "LPI EN LÍNEA · {frame_id} · VISTA PREVIA RECIBIDA",
@@ -83,6 +103,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "tab_program": "Lunar Orbiter program",
         "globe_label": "3D VIEW  /  DRAG TO ROTATE · CLICK A PHOTO FOR ITS DETAILS",
         "globe_note": "PROJECTED FROM THE SPACECRAFT · ORIENTATION ESTIMATED",
+        "labels_toggle": "LABELS",
         "legend_high_altitude": "HIGH-ALTITUDE FRAME (> {km} KM)",
         "note_high_altitude": (
             "High-altitude frame: it covers a wide area and is projected onto the "
@@ -95,6 +116,11 @@ TEXTS: dict[str, dict[str, str]] = {
         "frame_placeholder": "FRAME",
         "mosaic_preparing": "PREPARING MOSAIC…",
         "load_button": "Load ↗",
+        "random_button": "Random",
+        "random_title": "Load a random frame of the mission",
+        "export_label": "EXPORT MISSION",
+        "export_csv_title": "Metadata of the loaded photos (CSV)",
+        "export_geojson_title": "Projected footprints of the loaded photos (GeoJSON)",
         "connecting": "CONNECTING TO THE LPI ARCHIVE…",
         "preview_alt": "Preview of the Lunar Orbiter frame",
         "preview_caption": "LPI PREVIEW",
@@ -110,6 +136,20 @@ TEXTS: dict[str, dict[str, str]] = {
         "meta_sun_azimuth": "SUN AZIMUTH",
         "meta_incidence_emission": "INCIDENCE / EMISSION",
         "meta_phase": "PHASE ANGLE",
+        "meta_camera": "CAMERA",
+        "camera_medium": "80 MM · MEDIUM RESOLUTION",
+        "camera_high": "610 MM · HIGH RESOLUTION (MIDDLE)",
+        "meta_footprint": "GROUND FOOTPRINT",
+        "footprint_projected": "{width} × {height} km",
+        "footprint_approximate": "≈ {width} × {height} km (APPROX.)",
+        "meta_emission_check": "EMISSION LPI / COMPUTED",
+        "emission_check": "{lpi}  /  {computed}  (Δ {delta})",
+        "emission_check_rejected": "{lpi}  /  {computed}  (Δ {delta} > {tolerance})",
+        "note_emission_rejected": (
+            "The emission implied by the spacecraft position does not match the "
+            "LPI's: the photo is not projected and is drawn as an approximate "
+            "north-up patch."
+        ),
         "status_connection_error": "CONNECTION ERROR · {error}",
         "status_load_error": "COULD NOT LOAD · {error}",
         "status_frame_loaded": "LPI ONLINE · {frame_id} · PREVIEW RECEIVED",

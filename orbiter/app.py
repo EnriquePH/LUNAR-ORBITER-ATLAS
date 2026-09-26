@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import random
 from io import BytesIO
 from urllib.parse import parse_qs
 
@@ -13,17 +14,27 @@ from PIL import Image
 
 from orbiter.catalog import MissionLoader, TileStore, default_cache_dir
 from orbiter.config import load_config
+from orbiter.export import footprints_geojson, mission_csv
 from orbiter.globe import (
+    EMISSION_TOLERANCE_DEGREES,
     HIGH_ALTITUDE_KM,
+    FrameGeometry,
     GlobeImage,
     camera_of,
     format_coordinates,
+    frame_geometry,
     image_at,
     make_globe,
     visible_images,
 )
 from orbiter.i18n import LANGUAGES, normalize_language, t
-from orbiter.lpi import LpiError, OrbiterFrame, fetch_frame, fetch_mission_frames
+from orbiter.lpi import (
+    FrameMetadata,
+    LpiError,
+    OrbiterFrame,
+    fetch_frame,
+    fetch_mission_frames,
+)
 from orbiter.reference import moon_tab, program_tab
 from orbiter.urls import MISSIONS_NUM, frame_url
 
@@ -86,8 +97,47 @@ def _degrees(*values: float | None) -> str:
     return "  /  ".join(f"{value:.2f}°" for value in values)
 
 
-def metadata_rows(frame: OrbiterFrame, lang: str = "es") -> list[html.Div]:
-    """Build the side-panel rows; fields missing from the LPI page show "—"."""
+def _footprint(geometry: FrameGeometry, lang: str) -> str:
+    key = "footprint_projected" if geometry.projected else "footprint_approximate"
+    return t(
+        lang, key, width=f"{geometry.width_km:.1f}", height=f"{geometry.height_km:.1f}"
+    )
+
+
+def _emission_check(
+    frame: OrbiterFrame, geometry: FrameGeometry, lang: str
+) -> tuple[str, bool]:
+    """Format the LPI and computed emission angles; flag a rejected projection."""
+    lpi, computed = frame.emission_angle, geometry.implied_emission
+    if lpi is None or computed is None:
+        return "—", False
+    delta = abs(computed - lpi)
+    rejected = delta > EMISSION_TOLERANCE_DEGREES
+    text = t(
+        lang,
+        "emission_check_rejected" if rejected else "emission_check",
+        lpi=_degrees(lpi),
+        computed=_degrees(computed),
+        delta=_degrees(delta),
+        tolerance=_degrees(EMISSION_TOLERANCE_DEGREES),
+    )
+    return text, rejected
+
+
+def metadata_rows(
+    frame: OrbiterFrame, lang: str = "es", image: GlobeImage | None = None
+) -> list[html.Div]:
+    """Build the side-panel rows; fields missing from the LPI page show "—".
+
+    Args:
+        frame: The frame from the LPI.
+        lang: Interface language.
+        image: The frame's globe image, if already built; otherwise it is built
+            from ``frame`` to measure the footprint and check the geometry.
+    """
+    image = image or globe_image(frame)
+    geometry = frame_geometry(image)
+    emission_check, rejected = _emission_check(frame, geometry, lang)
     spacecraft_position = "—"
     if frame.spacecraft_latitude is not None and frame.spacecraft_longitude is not None:
         spacecraft_position = format_coordinates(
@@ -113,6 +163,14 @@ def metadata_rows(frame: OrbiterFrame, lang: str = "es") -> list[html.Div]:
             _degrees(frame.incidence_angle, frame.emission_angle),
         ),
         _metadata_row(t(lang, "meta_phase"), _degrees(frame.phase_angle)),
+        _metadata_row(t(lang, "meta_camera"), t(lang, f"camera_{image.camera}")),
+        _metadata_row(t(lang, "meta_footprint"), _footprint(geometry, lang)),
+        _metadata_row(t(lang, "meta_emission_check"), emission_check),
+        *(
+            [html.P(t(lang, "note_emission_rejected"), className="meta-note")]
+            if rejected
+            else []
+        ),
         *(
             [html.P(t(lang, "note_high_altitude"), className="meta-note")]
             if frame.spacecraft_altitude_km is not None
@@ -185,6 +243,14 @@ def _atlas(lang: str) -> html.Main:
             html.Section(
                 [
                     html.Div(t(lang, "globe_label"), className="globe-label"),
+                    dcc.Checklist(
+                        id="show-labels",
+                        options=[{"label": t(lang, "labels_toggle"), "value": "on"}],
+                        value=["on"],
+                        persistence=True,
+                        persistence_type="local",
+                        className="labels-toggle",
+                    ),
                     dcc.Graph(
                         id="globe",
                         figure=make_globe(),
@@ -247,6 +313,31 @@ def _atlas(lang: str) -> html.Main:
                             ),
                             html.Div(
                                 [
+                                    html.Span(
+                                        t(lang, "export_label"),
+                                        className="export-label",
+                                    ),
+                                    html.Button(
+                                        "CSV",
+                                        id="export-csv",
+                                        n_clicks=0,
+                                        title=t(lang, "export_csv_title"),
+                                        className="export-button",
+                                    ),
+                                    html.Button(
+                                        "GeoJSON",
+                                        id="export-geojson",
+                                        n_clicks=0,
+                                        title=t(lang, "export_geojson_title"),
+                                        className="export-button",
+                                    ),
+                                    dcc.Download(id="download-csv"),
+                                    dcc.Download(id="download-geojson"),
+                                ],
+                                className="export-row",
+                            ),
+                            html.Div(
+                                [
                                     dcc.Input(
                                         id="frame-id",
                                         value=DEFAULT_FRAME_ID,
@@ -260,6 +351,14 @@ def _atlas(lang: str) -> html.Main:
                                         id="load-frame",
                                         n_clicks=0,
                                         className="load-button",
+                                    ),
+                                    html.Button(
+                                        t(lang, "random_button"),
+                                        id="random-frame",
+                                        n_clicks=0,
+                                        disabled=True,
+                                        title=t(lang, "random_title"),
+                                        className="random-button",
                                     ),
                                 ],
                                 className="control-row",
@@ -514,17 +613,30 @@ def _selected_image(frame_id: str | None) -> GlobeImage | None:
     Input("selected-frame", "data"),
     Input("mosaic-count", "data"),
     Input("mission-select", "value"),
+    Input("show-labels", "value"),
 )
-def render_globe(selected_id: str | None, _mosaic_count: int, mission: int | None):
-    """Redraw the globe with the mission's loaded tiles and the selection."""
+def render_globe(
+    selected_id: str | None,
+    _mosaic_count: int,
+    mission: int | None,
+    show_labels: list[str] | None = ("on",),
+):
+    """Redraw the globe with the mission's loaded tiles and the selection.
+
+    ``show_labels`` is the labels checklist value: frame IDs are drawn when it
+    contains ``"on"``.
+    """
     tiles = LOADER.progress(mission).tiles.values() if mission else ()
-    return make_globe(_selected_image(selected_id), tiles)
+    return make_globe(
+        _selected_image(selected_id), tiles, show_labels="on" in (show_labels or ())
+    )
 
 
 @app.callback(
     Output("frame-select", "options"),
     Output("frame-select", "value"),
     Output("frame-select", "disabled"),
+    Output("random-frame", "disabled"),
     Output("status", "children", allow_duplicate=True),
     Output("mosaic-poll", "disabled"),
     Output("mosaic-count", "data"),
@@ -538,13 +650,13 @@ def list_mission_frames(mission: int, lang: str = "es"):
         frame_ids = fetch_mission_frames(mission)
     except requests.RequestException as error:
         status = t(lang, "status_connection_error", error=error)
-        return [], None, True, status, True, 0
+        return [], None, True, True, status, True, 0
     except ValueError as error:
         status = t(lang, "status_load_error", error=describe_error(lang, error))
-        return [], None, True, status, True, 0
+        return [], None, True, True, status, True, 0
     LOADER.start(mission)
     status = t(lang, "status_mission_frames", mission=mission, count=len(frame_ids))
-    return frame_ids, None, False, status, False, 0
+    return frame_ids, None, False, False, status, False, 0
 
 
 @app.callback(
@@ -608,6 +720,19 @@ def select_clicked_image(
 
 
 @app.callback(
+    Output("frame-id", "value", allow_duplicate=True),
+    Input("random-frame", "n_clicks"),
+    State("frame-select", "options"),
+    prevent_initial_call=True,
+)
+def select_random_frame(_clicks: int, frame_ids: list[str] | None):
+    """Load a random frame of the selected mission."""
+    if not frame_ids:
+        return no_update
+    return random.choice(frame_ids)
+
+
+@app.callback(
     Output("frame-id", "value"),
     Input("frame-select", "value"),
     prevent_initial_call=True,
@@ -615,6 +740,54 @@ def select_clicked_image(
 def select_frame(frame_id: str | None):
     """Load the frame chosen in the selector."""
     return frame_id or no_update
+
+
+def _cached_metadata(frame_id: str) -> FrameMetadata | None:
+    """LPI metadata from the disk cache; ``None`` if missing or unreadable."""
+    try:
+        return LOADER.store.metadata(frame_id)
+    except (OSError, ValueError):
+        return None
+
+
+def _mission_tiles(mission: int | None) -> list[GlobeImage]:
+    return list(LOADER.progress(mission).tiles.values()) if mission else []
+
+
+@app.callback(
+    Output("download-csv", "data"),
+    Input("export-csv", "n_clicks"),
+    State("mission-select", "value"),
+    prevent_initial_call=True,
+)
+def export_csv(_clicks: int, mission: int | None):
+    """Download the metadata of the mission's loaded frames as CSV."""
+    tiles = _mission_tiles(mission)
+    if not tiles:
+        return no_update
+    return {
+        "content": mission_csv(tiles, _cached_metadata),
+        "filename": f"lunar-orbiter-{mission}-frames.csv",
+        "type": "text/csv",
+    }
+
+
+@app.callback(
+    Output("download-geojson", "data"),
+    Input("export-geojson", "n_clicks"),
+    State("mission-select", "value"),
+    prevent_initial_call=True,
+)
+def export_geojson(_clicks: int, mission: int | None):
+    """Download the footprints of the mission's loaded frames as GeoJSON."""
+    tiles = _mission_tiles(mission)
+    if not tiles:
+        return no_update
+    return {
+        "content": footprints_geojson(tiles),
+        "filename": f"lunar-orbiter-{mission}-footprints.geojson",
+        "type": "application/geo+json",
+    }
 
 
 def main() -> None:

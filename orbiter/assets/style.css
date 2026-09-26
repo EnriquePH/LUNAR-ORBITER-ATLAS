@@ -17,6 +17,12 @@ h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
 .globe-label { position:absolute; top:19px; left:20px; z-index:2; font:10px 'DM Mono',monospace; color:#aaa7a0; letter-spacing:.7px; pointer-events:none; }
 .globe-coordinates { position:absolute; right:20px; bottom:17px; z-index:2; font:10px 'DM Mono',monospace; color:#777973; pointer-events:none; }
 .globe-legend { position:absolute; left:20px; bottom:17px; z-index:2; display:flex; align-items:center; gap:8px; font:10px 'DM Mono',monospace; color:#8fb3c9; pointer-events:none; }
+.labels-toggle { position:absolute; top:15px; right:20px; z-index:3; font:10px 'DM Mono',monospace; color:#aaa7a0; letter-spacing:.7px; }
+/* Dash 4 colours its option lists with --Dash-* variables (dark by default). */
+.labels-toggle { --Dash-Text-Strong:#aaa7a0; --Dash-Fill-Primary-Hover:transparent; --Dash-Fill-Primary-Active:transparent; }
+.labels-toggle .dash-options-list-option { display:flex; align-items:center; gap:7px; padding:0; cursor:pointer; }
+.labels-toggle .dash-options-list-option:hover { --Dash-Text-Strong:#e6e3dd; }
+.labels-toggle input { margin:0; accent-color:#ff7547; cursor:pointer; }
 .legend-swatch { width:18px; height:0; border-top:2px solid #8fb3c9; }
 .meta-note { margin:12px 0 0; padding:9px 10px; border-left:2px solid #8fb3c9; background:#8fb3c914; color:#cfccc5; font:10px/1.6 'DM Mono',monospace; }
 .globe-render { width:100%; height:590px; }
@@ -24,6 +30,10 @@ h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
 .side-heading { margin:0; font:500 19px 'DM Mono',monospace; }
 .control-row { display:flex; gap:8px; }
 .mosaic-status { margin-bottom:8px; }
+.export-row { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+.export-label { flex:1; color:#777973; font:9px 'DM Mono',monospace; letter-spacing:.5px; }
+.export-button { border:1px solid #4a4c4d; border-radius:2px; padding:4px 9px; color:#e6e3dd; background:#181a1b; font:10px 'DM Mono',monospace; cursor:pointer; }
+.export-button:hover { border-color:#ff7547; color:#ff8a61; }
 .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
 .side-panel {
     --Dash-Fill-Inverse-Strong:#181a1b; --Dash-Text-Strong:#e6e3dd; --Dash-Text-Weak:#aaa7a0;
@@ -38,6 +48,9 @@ h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
 .frame-input { width:100%; min-width:0; background:#181a1b; border:1px solid #4a4c4d; color:#e6e3dd; border-radius:2px; padding:11px 12px; font:12px 'DM Mono',monospace; }
 .load-button { white-space:nowrap; border:0; border-radius:2px; padding:0 13px; color:#141414; background:#ff7547; font-size:11px; font-weight:500; cursor:pointer; }
 .load-button:hover { background:#ff946f; }
+.random-button { white-space:nowrap; border:1px solid #4a4c4d; border-radius:2px; padding:0 11px; color:#e6e3dd; background:#181a1b; font:11px 'DM Mono',monospace; cursor:pointer; }
+.random-button:hover:not(:disabled) { border-color:#ff7547; color:#ff8a61; }
+.random-button:disabled { color:#5c5e5f; cursor:default; }
 .status-line { min-height:15px; color:#a6a49d; font:9px 'DM Mono',monospace; letter-spacing:.4px; }
 .preview-frame { height:224px; display:flex; align-items:center; justify-content:center; background:#090a0b; border:1px solid #333537; overflow:hidden; }
 .preview-image { display:block; width:100%; height:100%; object-fit:contain; }
@@ -63,8 +76,13 @@ h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
     .app-shell { padding:14px 14px 18px; }
     .top-meta,.title-note { display:none; }
     h1 { font-size:28px; }
-    .globe-panel { min-height:360px; }
+    /* Keep the label and the two notes clear of the globe and of each other. */
+    .globe-panel { min-height:360px; padding:72px 0 50px; }
+    .labels-toggle { top:48px; }
     .globe-render { height:360px; min-height:360px; }
+    .globe-label { right:20px; line-height:1.5; }
+    .globe-legend { bottom:33px; }
+    .globe-coordinates { left:20px; right:auto; }
     .side-panel { display:flex; }
     .preview-frame { height:260px; }
     .footbar { flex-direction:column; gap:7px; }

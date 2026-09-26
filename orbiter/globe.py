@@ -50,6 +50,12 @@ CAMERAS = {
 # outlined on the globe and flagged in the side panel.
 HIGH_ALTITUDE_KM = 1000.0
 OUTLINE_SAMPLES = 24
+# Footprints (side panel and exports): samples along the central row and
+# column, directions traced from the principal point for the outline, and
+# bisection steps to find the limb on each (to 2^-30 of the frame).
+FOOTPRINT_SAMPLES = 129
+OUTLINE_RAYS = 96
+LIMB_BISECTIONS = 30
 # The LPI's emission angle must agree with the one implied by the spacecraft
 # position; otherwise the metadata is inconsistent and the frame is not
 # projected. Over 890 frames the median gap is 0.06° and 95% are under 0.35°.
@@ -71,6 +77,10 @@ TILE_RADIUS_STEP = 0.0004
 SELECTED_RADIUS = 1.006
 CAMERA_DISTANCE = 1.6
 REFERENCE_COLOR = "#8fb3c9"
+# Frame IDs float just above the tiles, at each photo's principal point.
+LABEL_RADIUS = 1.012
+LABEL_COLOR = "#ffd9c9"
+SELECTED_LABEL_COLOR = ACCENT
 # Pole labels sit just outside the sphere; the axis range must include them.
 POLE_LABEL_HEIGHT = 1.18
 AXIS_LIMIT = 1.25
@@ -232,24 +242,47 @@ def frame_camera(image: GlobeImage) -> FrameCamera | None:
 _CAMERA_CACHE: dict[tuple, FrameCamera | None] = {}
 
 
-def _build_camera(image: GlobeImage) -> FrameCamera | None:
-    if (
-        image.altitude_km is None
-        or image.spacecraft_latitude is None
-        or image.spacecraft_longitude is None
-    ):
-        return None
+def _view(image: GlobeImage) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+    """Spacecraft position, principal point, view direction and emission (°)."""
     position = np.array(
-        _to_cartesian(
+        selenographic_to_cartesian(
             image.spacecraft_latitude,
             image.spacecraft_longitude,
             1.0 + image.altitude_km / MOON_RADIUS_KM,
         )
     )
-    target = np.array(_to_cartesian(image.latitude, image.longitude))
+    target = np.array(selenographic_to_cartesian(image.latitude, image.longitude))
     forward = target - position
     forward /= np.linalg.norm(forward)
     emission = math.degrees(math.acos(float(np.clip(-forward @ target, -1.0, 1.0))))
+    return position, target, forward, emission
+
+
+def _has_position(image: GlobeImage) -> bool:
+    return (
+        image.altitude_km is not None
+        and image.spacecraft_latitude is not None
+        and image.spacecraft_longitude is not None
+    )
+
+
+def implied_emission_angle(image: GlobeImage) -> float | None:
+    """Emission angle implied by the spacecraft position, in degrees.
+
+    It is the angle at the principal point between the local vertical and the
+    direction to the spacecraft; :func:`frame_camera` compares it with the
+    LPI's own value.
+
+    Returns:
+        The angle (0..180), or ``None`` without a spacecraft position.
+    """
+    return _view(image)[3] if _has_position(image) else None
+
+
+def _build_camera(image: GlobeImage) -> FrameCamera | None:
+    if not _has_position(image):
+        return None
+    position, target, forward, emission = _view(image)
     if emission >= 90.0:
         return None
     if (
@@ -343,6 +376,99 @@ def _match_sky(camera: FrameCamera, texture: np.ndarray) -> FrameCamera:
     return candidates[ranked[0][1]]
 
 
+@dataclass(frozen=True)
+class FrameGeometry:
+    """Ground size of a frame and how it was placed on the globe.
+
+    Attributes:
+        width_km: Ground length across the image through its centre, in km.
+        height_km: Ground length along the image through its centre, in km.
+            For projected frames only the part that lands on the Moon counts.
+        projected: ``True`` if the frame is projected from the spacecraft,
+            ``False`` if it falls back to the approximate north-up patch.
+        implied_emission: Emission angle implied by the spacecraft position,
+            in degrees, or ``None`` without one.
+    """
+
+    width_km: float
+    height_km: float
+    projected: bool
+    implied_emission: float | None
+
+
+def _border_distances(camera: FrameCamera, angles: np.ndarray) -> np.ndarray:
+    """How far the footprint reaches from the principal point, per direction.
+
+    The part of the image plane that sees the Moon is convex and contains the
+    principal point, so along each direction (radians, 0 towards ``right``,
+    π/2 towards ``up``) it ends at the frame's edge or, before that, at the
+    limb, found by ``LIMB_BISECTIONS`` bisection steps.
+
+    Returns:
+        Distances in focal units, one per angle.
+    """
+    cosines, sines = np.cos(angles), np.sin(angles)
+    with np.errstate(divide="ignore"):
+        edge = np.minimum(
+            camera.half_width / np.abs(cosines), camera.half_height / np.abs(sines)
+        )
+
+    def hits(distance: np.ndarray) -> np.ndarray:
+        return camera.hit_sphere(camera.rays(distance * cosines, distance * sines))[1]
+
+    inside, outside = np.zeros_like(edge), edge.copy()
+    past_limb = ~hits(edge)
+    inside[~past_limb] = edge[~past_limb]
+    for _ in range(LIMB_BISECTIONS):
+        middle = (inside + outside) / 2
+        hit = hits(middle)
+        inside = np.where(past_limb & hit, middle, inside)
+        outside = np.where(past_limb & ~hit, middle, outside)
+    return inside
+
+
+def _ground_length_km(camera: FrameCamera, horizontal, vertical) -> float:
+    """Length on the Moon of an image-plane polyline whose rays all hit it."""
+    points, _ = camera.hit_sphere(camera.rays(horizontal, vertical))
+    cosines = np.einsum("ij,ij->i", points[:-1], points[1:])
+    return float(np.arccos(np.clip(cosines, -1.0, 1.0)).sum()) * MOON_RADIUS_KM
+
+
+def frame_geometry(image: GlobeImage) -> FrameGeometry:
+    """Measure a frame's footprint as drawn on the globe.
+
+    Projected frames are measured along the image's central row and column,
+    up to the frame's edges or the limb.
+    Fallback patches use :func:`patch_width_degrees`, a rough nadir estimate,
+    with the texture's aspect.
+    """
+    camera = frame_camera(image)
+    if camera is None:
+        width_km = (
+            math.radians(patch_width_degrees(image.altitude_km, image.camera))
+            * MOON_RADIUS_KM
+        )
+        height, width = image.texture.shape
+        return FrameGeometry(
+            width_km=width_km,
+            height_km=width_km * height / width,
+            projected=False,
+            implied_emission=implied_emission_angle(image),
+        )
+    right, up, left, down = _border_distances(
+        camera, np.array([0.0, np.pi / 2, np.pi, -np.pi / 2])
+    )
+    zeros = np.zeros(FOOTPRINT_SAMPLES)
+    across = np.linspace(-left, right, FOOTPRINT_SAMPLES)
+    along = np.linspace(-down, up, FOOTPRINT_SAMPLES)
+    return FrameGeometry(
+        width_km=_ground_length_km(camera, across, zeros),
+        height_km=_ground_length_km(camera, zeros, along),
+        projected=True,
+        implied_emission=implied_emission_angle(image),
+    )
+
+
 def format_coordinates(latitude: float, longitude: float) -> str:
     """Format signed degrees with hemisphere letters (N/S, E/W)."""
     latitude_hemisphere = "N" if latitude >= 0 else "S"
@@ -353,11 +479,24 @@ def format_coordinates(latitude: float, longitude: float) -> str:
     )
 
 
-def _to_cartesian(
+def selenographic_to_cartesian(
     latitude_degrees: np.ndarray | float,
     longitude_degrees: np.ndarray | float,
     radius: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Convert selenographic degrees to scene coordinates.
+
+    Args:
+        latitude_degrees: Latitude in degrees, north positive; scalar or array.
+        longitude_degrees: Longitude in degrees, east positive; any equivalent
+            value (``-170`` and ``190`` give the same point).
+        radius: Distance from the centre, in Moon radii (1 is the surface).
+
+    Returns:
+        ``(x, y, z)``: ``x`` towards 0° E, ``y`` towards 90° E, ``z`` towards
+        the north pole; arrays shaped like the inputs. Inverse of
+        :func:`cartesian_to_selenographic`.
+    """
     latitudes = np.radians(latitude_degrees)
     longitudes = np.radians(longitude_degrees)
     return (
@@ -367,11 +506,15 @@ def _to_cartesian(
     )
 
 
-def to_latitude_longitude(x: float, y: float, z: float) -> tuple[float, float]:
+def cartesian_to_selenographic(x: float, y: float, z: float) -> tuple[float, float]:
     """Convert a scene point to (latitude, longitude) in degrees.
 
     The point may lie at any non-zero distance from the centre (tiles float
     slightly above the unit sphere). Longitude is returned in -180..180.
+    Inverse of :func:`selenographic_to_cartesian`.
+
+    Raises:
+        ZeroDivisionError: For the centre point ``(0, 0, 0)``.
     """
     radius = math.sqrt(x * x + y * y + z * z)
     return math.degrees(math.asin(z / radius)), math.degrees(math.atan2(y, x))
@@ -419,7 +562,7 @@ def patch_contains(image: GlobeImage, latitude: float, longitude: float) -> bool
     """
     camera = frame_camera(image)
     if camera is not None:
-        return camera.sees(np.array(_to_cartesian(latitude, longitude)))
+        return camera.sees(np.array(selenographic_to_cartesian(latitude, longitude)))
     latitude_span, longitude_span = _patch_extent(image)
     delta_longitude = (longitude - image.longitude + 180) % 360 - 180
     return (
@@ -432,7 +575,7 @@ def image_at(
     images: Iterable[GlobeImage], x: float, y: float, z: float
 ) -> GlobeImage | None:
     """Return the image under a clicked point; overlaps go to the nearest centre."""
-    latitude, longitude = to_latitude_longitude(x, y, z)
+    latitude, longitude = cartesian_to_selenographic(x, y, z)
     hits = [image for image in images if patch_contains(image, latitude, longitude)]
     if not hits:
         return None
@@ -449,7 +592,9 @@ def _base_sphere() -> go.Surface:
     latitudes, longitudes = np.meshgrid(
         np.linspace(-90, 90, 73), np.linspace(-180, 180, 145), indexing="ij"
     )
-    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(latitudes, longitudes)
+    x_coordinates, y_coordinates, z_coordinates = selenographic_to_cartesian(
+        latitudes, longitudes
+    )
     return go.Surface(
         x=x_coordinates,
         y=y_coordinates,
@@ -500,7 +645,7 @@ def _patch_grid(
         width,
     )
     latitude_grid, longitude_grid = np.meshgrid(latitudes, longitudes, indexing="ij")
-    return _to_cartesian(latitude_grid, longitude_grid, radius)
+    return selenographic_to_cartesian(latitude_grid, longitude_grid, radius)
 
 
 def _image_surface(image: GlobeImage, radius: float) -> go.Surface:
@@ -675,9 +820,45 @@ def _outline(image: GlobeImage, radius: float) -> np.ndarray:
             ]
         )
         points = np.stack(
-            _to_cartesian(np.clip(latitudes, -90, 90), longitudes, radius), axis=1
+            selenographic_to_cartesian(np.clip(latitudes, -90, 90), longitudes, radius),
+            axis=1,
         )
     return np.vstack([points, np.full((1, 3), np.nan)])
+
+
+def footprint_outline(image: GlobeImage) -> list[tuple[float, float]]:
+    """Border of a frame's footprint on the Moon, as drawn on the globe.
+
+    For projected frames the border is the part of the image plane whose rays
+    hit the Moon: the frame's edges, cut by the limb where the camera saw past
+    it (a whole-disc shot gives the limb alone). That region is convex and
+    contains the principal point, so the border is traced along
+    ``OUTLINE_RAYS`` directions from it, plus the four corners; on each, the
+    limb is found by bisection.
+
+    Returns:
+        ``(latitude, longitude)`` pairs in degrees going once round the
+        footprint, longitudes in -180..180.
+    """
+    camera = frame_camera(image)
+    if camera is None:
+        return [
+            cartesian_to_selenographic(*point) for point in _outline(image, 1.0)[:-1]
+        ]
+    width, height = camera.half_width, camera.half_height
+    corners = np.arctan2(
+        [height, height, -height, -height], [width, -width, -width, width]
+    )
+    angles = np.sort(
+        np.concatenate(
+            [np.linspace(-np.pi, np.pi, OUTLINE_RAYS, endpoint=False), corners]
+        )
+    )
+    distances = _border_distances(camera, angles)
+    points, _ = camera.hit_sphere(
+        camera.rays(distances * np.cos(angles), distances * np.sin(angles))
+    )
+    return [cartesian_to_selenographic(*point) for point in points]
 
 
 def _high_altitude_outlines(images: list[GlobeImage]) -> go.Scatter3d | None:
@@ -703,19 +884,56 @@ def _high_altitude_outlines(images: list[GlobeImage]) -> go.Scatter3d | None:
     )
 
 
+def _frame_labels(
+    images: list[GlobeImage], selected_id: str | None = None
+) -> go.Scatter3d | None:
+    """Frame ID at the centre of each photo (its principal point).
+
+    The selected photo's label takes the accent colour and sits above its
+    marker, so the photo shown in the side panel stands out.
+    ``hoverinfo="skip"`` lets clicks on a label reach the photo below.
+    """
+    if not images:
+        return None
+    x_coordinates, y_coordinates, z_coordinates = selenographic_to_cartesian(
+        np.array([image.latitude for image in images]),
+        np.array([image.longitude for image in images]),
+        LABEL_RADIUS,
+    )
+    selected = [image.frame_id == selected_id for image in images]
+    return go.Scatter3d(
+        x=x_coordinates,
+        y=y_coordinates,
+        z=z_coordinates,
+        name="labels",
+        mode="text",
+        text=[image.frame_id for image in images],
+        textposition=[
+            "top center" if is_selected else "middle center" for is_selected in selected
+        ],
+        textfont={
+            "color": [
+                SELECTED_LABEL_COLOR if is_selected else LABEL_COLOR
+                for is_selected in selected
+            ],
+            "size": [11 if is_selected else 9 for is_selected in selected],
+            "family": "DM Mono, monospace",
+        },
+        hoverinfo="skip",
+    )
+
+
 def _marker(image: GlobeImage) -> go.Scatter3d:
-    x_coordinate, y_coordinate, z_coordinate = _to_cartesian(
+    """Accent dot on the selection; its label is in :func:`_frame_labels`."""
+    x_coordinate, y_coordinate, z_coordinate = selenographic_to_cartesian(
         image.latitude, image.longitude, 1.02
     )
     return go.Scatter3d(
         x=[x_coordinate],
         y=[y_coordinate],
         z=[z_coordinate],
-        mode="markers+text",
+        mode="markers",
         marker={"size": 4, "color": ACCENT},
-        text=[image.frame_id],
-        textposition="top center",
-        textfont={"color": "#ff9c79", "family": "DM Mono, monospace", "size": 11},
         hovertext=[
             f"{image.frame_id} · {format_coordinates(image.latitude, image.longitude)}"
         ],
@@ -730,7 +948,7 @@ def _reference_marks() -> list[go.Scatter3d]:
     click near the equator still reaches the photo underneath.
     """
     longitudes = np.linspace(-180, 180, 181)
-    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(
+    x_coordinates, y_coordinates, z_coordinates = selenographic_to_cartesian(
         np.zeros_like(longitudes), longitudes, 1.008
     )
     equator = go.Scatter3d(
@@ -760,7 +978,7 @@ def _reference_marks() -> list[go.Scatter3d]:
 
 
 def _camera_eye(latitude: float, longitude: float) -> dict[str, float]:
-    x_coordinate, y_coordinate, z_coordinate = _to_cartesian(
+    x_coordinate, y_coordinate, z_coordinate = selenographic_to_cartesian(
         latitude, longitude, CAMERA_DISTANCE
     )
     return {
@@ -791,8 +1009,12 @@ def make_globe(
     selected: GlobeImage | None = None,
     tiles: Iterable[GlobeImage] = (),
     hidden: Collection[str] = (),
+    show_labels: bool = True,
 ) -> go.Figure:
     """Build the globe with every visible tile and the selected frame on top.
+
+    With ``show_labels``, each photo carries its frame ID at its centre and
+    the selection's label is drawn in the accent colour above its marker.
 
     The camera centres on the selection; ``uirevision`` keeps the user's own
     rotation while tiles are added or hidden for the same selection.
@@ -808,6 +1030,9 @@ def make_globe(
     outlines = _high_altitude_outlines(images)
     if outlines is not None:
         traces.append(outlines)
+    labels = _frame_labels(images, selected.frame_id if selected else None)
+    if show_labels and labels is not None:
+        traces.append(labels)
     traces += _reference_marks()
     if selected is not None:
         traces.append(_marker(selected))

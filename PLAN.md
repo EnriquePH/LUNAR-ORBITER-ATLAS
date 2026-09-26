@@ -61,6 +61,35 @@
 - [x] Makefile: `stop`, `download` (precarga de fotos), `site` (web en local) y
       `lint-md`.
 
+- [x] Ideas baratas de `draft/ideas-de-mejora.md`:
+      1. Conversión de coordenadas pública (`selenographic_to_cartesian`,
+         `cartesian_to_selenographic`) con tests de ida y vuelta.
+      2. Panel lateral: cámara (80 / 610 mm), huella en km y comprobación de la
+         emisión (LPI frente a la calculada, Δ; aviso si supera 5°).
+      3. Botón «Al azar» con un fotograma de la misión.
+      4. Exportar la misión: CSV (metadatos del caché + cámara, huella, emisión
+         calculada) y GeoJSON (huellas). El contorno y la huella buscan el limbo
+         por bisección: con una rejilla quedaban hasta 12° por dentro. Probado
+         con las 890 fotos: 5 tomas de 5500 km ven el disco entero y varias de
+         la misión 4 y 5 rodean un polo (anillo cerrado por lat ±90). <1 s por
+         misión.
+- [x] README revisado: funciones nuevas, formato de las exportaciones y tabla
+      de módulos (`export.py`, `urls.py`). Deshecho un formateo del editor que
+      quitaba espacios (diff guardado en `draft/README-editor-format.diff`).
+- [x] Capturas de la web regeneradas (`atlas`, `mission-4` con la toma 4114,
+      `mobile`) con los botones nuevos; script CDP en
+      `draft/scripts/site_screenshots.py`. Corregido en móvil el solapamiento de
+      la leyenda y la nota bajo el globo, y de la etiqueta superior con la «N».
+- [x] Etiqueta con el ID en el centro de cada foto del globo (una sola traza
+      `Scatter3d` de texto, sin hover para no robar clicks); la de la foto
+      seleccionada (la del panel) pasa a naranja sobre su marcador.
+- [x] Interruptor «Etiquetas» sobre el globo (recordado en el navegador).
+- [x] Giro más lento al acercarse (proporcional a la altura sobre la superficie)
+      y zoom limitado justo encima de la Luna (`orbiter/assets/rotation.js`).
+      Medido: el mismo arrastre de 100 px gira 22° de cerca antes y 0,8° ahora.
+- [x] Release 1.0.0: versión en `pyproject.toml`, `CITATION.cff`, README y
+      User-Agent; `CHANGELOG.md`; capturas de la web regeneradas; tag `v1.0.0`.
+
 ## Pendiente
 
 - (nada abierto)

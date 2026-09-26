@@ -2,7 +2,7 @@ PYTHON := .venv/bin/python
 SITE_PORT := 8765
 # Missions for `make download`, e.g. make download MISSIONS="1 4" (default: all).
 MISSIONS :=
-MARKDOWN := README.md CLAUDE.md PLAN.md
+MARKDOWN := README.md CLAUDE.md PLAN.md CHANGELOG.md
 
 .PHONY: help install run stop download test lint lint-md format check icons site clean
 

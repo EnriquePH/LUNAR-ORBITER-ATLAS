@@ -22,7 +22,7 @@ from bs4 import BeautifulSoup
 
 from orbiter.urls import MISSIONS_NUM, frame_url, mission_url
 
-USER_AGENT = "LunarOrbiterLocalViewer/0.1 (educational; +https://www.energycode.org/)"
+USER_AGENT = "LunarOrbiterLocalViewer/1.0 (educational; +https://www.energycode.org/)"
 
 
 class LpiError(ValueError):

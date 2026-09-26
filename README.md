@@ -21,9 +21,16 @@ Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
 
 - **Mission mosaic** — every frame of the selected mission is projected onto
   the part of the Moon it photographed. Click a photo to show its details in
-  the side panel.
+  the side panel, or press **Random** to jump to any frame of the mission.
+  Each photo is labelled with its frame ID; the selected one turns orange,
+  and the **Labels** switch above the globe hides them.
+  Rotation slows down as you zoom in, so photos stay easy to pick up close.
 - **Frame details** — LPI preview, principal point, spacecraft altitude and
-  position, and illumination angles (sun azimuth, incidence, emission, phase).
+  position, illumination angles (sun azimuth, incidence, emission, phase),
+  camera (80 mm or 610 mm), ground footprint in km, and a geometry check: the
+  LPI's emission angle next to the one implied by the spacecraft position.
+- **Export** — download the loaded frames of a mission as CSV (metadata,
+  camera, footprint size) or GeoJSON (projected footprints as polygons).
 - **Reference tabs** — summarised facts about the Moon and the Lunar Orbiter
   program, with their Wikipedia sources.
 - **English and Spanish** — switch with the **ES | EN** control in the top bar
@@ -52,6 +59,25 @@ look past the limb are dropped.
   off-Moon pixels land on the black sky in the image.
 - **Limits.** Terrain relief and lens distortion are ignored; positions are as
   good as the published metadata.
+
+### Exported files
+
+Both exports cover the frames already loaded on the globe for the selected
+mission.
+
+- **CSV** — one row per frame: the LPI metadata (principal point, spacecraft
+  position, illumination angles, preview URL), plus `camera`,
+  `footprint_width_km`, `footprint_height_km`, `projected` and
+  `implied_emission_angle`. Empty cells are values the LPI does not list.
+- **GeoJSON** — a `FeatureCollection` with one polygon per frame, following the
+  outline drawn on the globe (cut at the limb for oblique and whole-disc
+  shots). Coordinates are selenographic degrees, east and north positive, not
+  WGS 84. Polygons that cross the 180° meridian keep continuous longitudes
+  (some beyond ±180), and those around a pole are closed along latitude ±90.
+
+The coordinate conversions are public: `selenographic_to_cartesian` and
+`cartesian_to_selenographic` in `orbiter.globe` map degrees to the globe's
+unit-sphere coordinates and back.
 
 ## Quick start
 
@@ -138,6 +164,8 @@ Project layout:
 | `orbiter/globe.py`         | Plotly globe: sphere, photo mosaic, markers         |
 | `orbiter/catalog.py`       | Background mission download with on-disk cache      |
 | `orbiter/lpi.py`           | LPI page client and parser                          |
+| `orbiter/export.py`        | CSV and GeoJSON exports of a mission                |
+| `orbiter/urls.py`          | LPI URLs and the number of missions                 |
 | `orbiter/i18n.py`          | Interface text in Spanish and English               |
 | `orbiter/reference.py`     | Moon and Lunar Orbiter program tabs                 |
 | `orbiter/config.py`        | `config.json` loader                                |
@@ -146,6 +174,10 @@ Project layout:
 | `orbiter/assets/icon.png`  | App icon; `make icons` builds it and the favicons   |
 | `scripts/run.sh`           | Launch script used by `make run`                    |
 | `site/`                    | Static project page, deployed to GitHub Pages       |
+
+## Changes
+
+Release notes are in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
@@ -163,7 +195,7 @@ and that text is available under
 ## Citation
 
 If you use this software, cite it as **ENERGYCODE (2026), _Lunar Orbiter
-Atlas_, version 0.1.0**. GitHub can generate a formatted citation from
+Atlas_, version 1.0.0**. GitHub can generate a formatted citation from
 [`CITATION.cff`](CITATION.cff).
 
 For photographs or metadata, cite the Lunar and Planetary Institute's Lunar

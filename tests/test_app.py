@@ -10,6 +10,8 @@ from orbiter import app as app_module
 from orbiter.app import (
     TEXTURE_SIZE,
     describe_error,
+    export_csv,
+    export_geojson,
     globe_image,
     language_from_search,
     list_mission_frames,
@@ -19,11 +21,12 @@ from orbiter.app import (
     render_page,
     select_clicked_image,
     select_frame,
+    select_random_frame,
     serve_layout,
     update_frame,
 )
 from orbiter.catalog import MissionProgress
-from orbiter.globe import GlobeImage, _to_cartesian
+from orbiter.globe import GlobeImage, selenographic_to_cartesian
 from orbiter.lpi import LpiError, OrbiterFrame
 
 UPDATE_FRAME_OUTPUTS = 5
@@ -176,9 +179,16 @@ def test_metadata_rows_mark_missing_fields():
 def test_list_mission_frames_starts_mosaic(monkeypatch, loader):
     monkeypatch.setattr(app_module, "fetch_mission_frames", lambda m: ["1005", "1006"])
 
-    options, value, disabled, status, poll_off, count = list_mission_frames(1)
+    options, value, disabled, no_random, status, poll_off, count = list_mission_frames(
+        1
+    )
 
-    assert (options, value, disabled) == (["1005", "1006"], None, False)
+    assert (options, value, disabled, no_random) == (
+        ["1005", "1006"],
+        None,
+        False,
+        False,
+    )
     assert status == "MISIÓN 1 · 2 FOTOGRAMAS"
     assert (poll_off, count) == (False, 0)
     assert loader.started == [1]
@@ -190,9 +200,15 @@ def test_list_mission_frames_reports_connection_error(monkeypatch, loader):
 
     monkeypatch.setattr(app_module, "fetch_mission_frames", fail)
 
-    options, value, disabled, status, poll_off, *_ = list_mission_frames(2)
+    options, value, disabled, no_random, status, poll_off, *_ = list_mission_frames(2)
 
-    assert (options, value, disabled, poll_off) == ([], None, True, True)
+    assert (options, value, disabled, no_random, poll_off) == (
+        [],
+        None,
+        True,
+        True,
+        True,
+    )
     assert status.startswith("ERROR DE CONEXIÓN")
     assert loader.started == []
 
@@ -216,7 +232,7 @@ def test_click_selects_the_photo_without_hiding_it(monkeypatch):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
     tiles = {"1100": _tile("1100", -40, -120)}
     monkeypatch.setattr(app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles)))
-    x, y, z = _to_cartesian(-40.2, -120.1, 1.003)
+    x, y, z = selenographic_to_cartesian(-40.2, -120.1, 1.003)
     click = {"points": [{"x": x, "y": y, "z": z, "curveNumber": 1}]}
 
     assert select_clicked_image(click, "1041", 1) == "1100"
@@ -228,9 +244,9 @@ def test_click_selects_the_photo_without_hiding_it(monkeypatch):
 
 def test_click_ignores_empty_space_and_the_current_selection(monkeypatch, loader):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
-    x, y, z = _to_cartesian(-60, 150)
+    x, y, z = selenographic_to_cartesian(-60, 150)
     empty = {"points": [{"x": x, "y": y, "z": z}]}
-    x, y, z = _to_cartesian(3.3, 39.15, 1.006)
+    x, y, z = selenographic_to_cartesian(3.3, 39.15, 1.006)
     on_selection = {"points": [{"x": x, "y": y, "z": z}]}
 
     assert select_clicked_image(empty, "1041", 1) is no_update
@@ -315,3 +331,74 @@ def test_metadata_rows_flag_high_altitude_frames():
     assert high["SPACECRAFT ALTITUDE"] == "2900.00 km"
     assert "High-altitude frame" in str(rows[-1])
     assert all("High-altitude" not in str(row) for row in low)
+
+
+def test_metadata_rows_show_camera_footprint_and_emission_check():
+    frame = _frame(
+        image_size=(55, 65),
+        spacecraft_altitude_km=46.0,
+        spacecraft_latitude=3.3,
+        spacecraft_longitude=39.15,
+        emission_angle=0.2,
+    )
+
+    values = _row_values(metadata_rows(frame, "en"))
+
+    assert values["CAMERA"] == "610 MM · HIGH RESOLUTION (MIDDLE)"
+    assert values["GROUND FOOTPRINT"].endswith(" km")
+    assert values["EMISSION LPI / COMPUTED"] == "0.20°  /  0.00°  (Δ 0.20°)"
+
+
+def test_metadata_rows_flag_inconsistent_emission():
+    frame = _frame(
+        spacecraft_altitude_km=46.0,
+        spacecraft_latitude=3.3,
+        spacecraft_longitude=39.15,
+        emission_angle=30.0,
+    )
+
+    rows = metadata_rows(frame, "en")
+    values = _row_values(rows)
+
+    assert "> 5.00°" in values["EMISSION LPI / COMPUTED"]
+    assert values["GROUND FOOTPRINT"].startswith("≈ ")
+    assert any("does not match" in str(row) for row in rows)
+
+
+def test_random_frame_picks_one_of_the_mission_frames(monkeypatch):
+    monkeypatch.setattr(app_module.random, "choice", lambda items: items[-1])
+
+    assert select_random_frame(1, ["1005", "1006"]) == "1006"
+    assert select_random_frame(1, []) is no_update
+    assert select_random_frame(1, None) is no_update
+
+
+def test_exports_cover_the_mission_tiles(monkeypatch):
+    tiles = {"1005": _tile("1005", 0, 10), "1006": _tile("1006", 1, 11)}
+    fake = FakeLoader(MissionProgress(tiles=tiles, finished=True))
+    fake.store = type("Store", (), {"metadata": lambda self, frame_id: None})()
+    monkeypatch.setattr(app_module, "LOADER", fake)
+
+    table = export_csv(1, 1)
+    shapes = export_geojson(1, 1)
+
+    assert table["filename"] == "lunar-orbiter-1-frames.csv"
+    assert table["content"].count("\n") == 3
+    assert shapes["filename"] == "lunar-orbiter-1-footprints.geojson"
+    assert shapes["content"].count('"Feature"') == 2
+
+
+def test_exports_skip_missions_without_tiles(loader):
+    assert export_csv(1, 1) is no_update
+    assert export_geojson(1, None) is no_update
+
+
+def test_render_globe_follows_the_labels_switch(monkeypatch):
+    monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
+
+    def names(value):
+        return {trace.name for trace in render_globe("1041", 0, None, value).data}
+
+    assert "labels" in names(["on"])
+    assert "labels" not in names([])
+    assert "labels" not in names(None)

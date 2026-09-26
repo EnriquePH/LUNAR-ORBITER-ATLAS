@@ -9,7 +9,7 @@ abstract: >-
   and Planetary Institute archive.
 authors:
   - name: ENERGYCODE
-version: 0.1.0
+version: 1.0.0
 date-released: 2026-09-26
 url: https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS
 license: MIT

@@ -152,3 +152,12 @@ def test_main_downloads_all_missions_by_default(monkeypatch):
     assert main([]) == 0
     assert main(["2", "4"]) == 0
     assert calls == [[1, 2, 3, 4, 5], [2, 4]]
+
+
+def test_tile_store_metadata_reads_only_the_cache(store, session):
+    assert store.metadata("1041") is None
+    assert session.urls == []
+
+    store.load("1041")
+
+    assert store.metadata("1041")["spacecraft_altitude_km"] == 256.43

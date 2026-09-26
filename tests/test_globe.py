@@ -1,10 +1,14 @@
 import math
+import re
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from orbiter.globe import (
+    ACCENT,
+    CAMERA_DISTANCE,
     FALLBACK_PATCH_DEGREES,
     MAX_PATCH_DEGREES,
     MAX_TILE_PIXELS,
@@ -14,16 +18,19 @@ from orbiter.globe import (
     GlobeImage,
     _patch_grid,
     _rolled,
-    _to_cartesian,
     camera_of,
+    cartesian_to_selenographic,
+    footprint_outline,
     format_coordinates,
     frame_camera,
+    frame_geometry,
     image_at,
+    implied_emission_angle,
     make_globe,
     patch_contains,
     patch_width_degrees,
+    selenographic_to_cartesian,
     tile_textures,
-    to_latitude_longitude,
     visible_images,
 )
 
@@ -52,6 +59,33 @@ def test_format_coordinates_uses_hemispheres(latitude, longitude, expected):
     assert format_coordinates(latitude, longitude) == expected
 
 
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [(0, 0), (3.3, 39.15), (-40.2, -120.1), (89.5, 179.9), (-89.5, -179.9)],
+)
+def test_coordinate_conversion_round_trips(latitude, longitude):
+    x, y, z = selenographic_to_cartesian(latitude, longitude, 1.2)
+    assert math.isclose(math.hypot(x, y, z), 1.2)
+    back = cartesian_to_selenographic(x, y, z)
+    assert back == pytest.approx((latitude, longitude))
+
+
+def test_coordinate_conversion_axes_and_wrapped_longitudes():
+    assert selenographic_to_cartesian(0, 0) == pytest.approx((1, 0, 0))
+    assert selenographic_to_cartesian(0, 90) == pytest.approx((0, 1, 0), abs=1e-12)
+    assert selenographic_to_cartesian(90, 0) == pytest.approx((0, 0, 1), abs=1e-12)
+    assert cartesian_to_selenographic(*selenographic_to_cartesian(10, 190)) == (
+        pytest.approx((10, -170))
+    )
+
+
+def test_coordinate_conversion_accepts_arrays():
+    latitudes, longitudes = np.array([[0.0, 45.0]]), np.array([[30.0, -60.0]])
+    x, y, z = selenographic_to_cartesian(latitudes, longitudes)
+    assert x.shape == y.shape == z.shape == (1, 2)
+    assert np.allclose(x**2 + y**2 + z**2, 1.0)
+
+
 def test_patch_width_scales_with_altitude_and_is_bounded():
     assert patch_width_degrees(None) == FALLBACK_PATCH_DEGREES
     assert patch_width_degrees(46) < patch_width_degrees(256.43)
@@ -61,7 +95,7 @@ def test_patch_width_scales_with_altitude_and_is_bounded():
 
 def test_image_at_finds_the_clicked_patch():
     near, far = _image("1041"), _image("1100", latitude=-40, longitude=-120)
-    x, y, z = _to_cartesian(3.5, 39.0, 1.003)
+    x, y, z = selenographic_to_cartesian(3.5, 39.0, 1.003)
 
     assert image_at([near, far], x, y, z) is near
     assert image_at([far], x, y, z) is None
@@ -69,7 +103,7 @@ def test_image_at_finds_the_clicked_patch():
 
 def test_image_at_prefers_the_nearest_centre_when_patches_overlap():
     first, second = _image("1041", longitude=39.0), _image("1042", longitude=41.0)
-    x, y, z = _to_cartesian(3.3, 40.8)
+    x, y, z = selenographic_to_cartesian(3.3, 40.8)
 
     assert image_at([first, second], x, y, z) is second
 
@@ -84,7 +118,7 @@ def test_visible_images_skip_hidden_and_replace_tile_with_selection():
     assert images[-1] is selected
 
 
-REFERENCES = {"equator", "poles"}
+REFERENCES = {"equator", "poles", "labels"}
 
 
 def _without_references(figure):
@@ -121,8 +155,39 @@ def test_make_globe_draws_tiles_selection_and_marker():
     assert np.asarray(mosaic.intensity).dtype == np.uint8
     assert int(np.max(mosaic.i)) < len(mosaic.x)
     assert selected.name == "1041"
-    assert list(figure.data[-1].text) == ["1041"]
+    assert figure.data[-1].marker.color == ACCENT
     assert figure.layout.uirevision == "1041"
+
+
+def test_make_globe_labels_each_photo_at_its_centre():
+    figure = make_globe(_image("1041"), [_image("1042", latitude=10, longitude=-20)])
+
+    (labels,) = [trace for trace in figure.data if trace.name == "labels"]
+    assert list(labels.text) == ["1042", "1041"]
+    assert labels.hoverinfo == "skip"
+    point = (labels.x[0], labels.y[0], labels.z[0])
+    assert cartesian_to_selenographic(*point) == pytest.approx((10, -20))
+
+
+def test_make_globe_highlights_the_selected_label():
+    figure = make_globe(_image("1041"), [_image("1042"), _image("1041")])
+
+    (labels,) = [trace for trace in figure.data if trace.name == "labels"]
+    colors = dict(zip(labels.text, labels.textfont.color, strict=True))
+    assert colors["1041"] == ACCENT
+    assert colors["1042"] != ACCENT
+    assert list(labels.text).count("1041") == 1
+
+
+def test_make_globe_can_hide_labels():
+    figure = make_globe(_image("1041"), [_image("1042")], show_labels=False)
+
+    assert all(trace.name != "labels" for trace in figure.data)
+    assert figure.data[-1].marker.color == ACCENT  # the selection keeps its dot
+
+
+def test_make_globe_without_photos_has_no_labels():
+    assert all(trace.name != "labels" for trace in make_globe().data)
 
 
 def test_make_globe_keeps_marker_for_hidden_selection():
@@ -206,7 +271,7 @@ def test_projection_matches_the_documented_nadir_footprint():
 def test_projection_centres_an_oblique_frame_on_its_principal_point():
     x, y, z = _patch_grid(_projected(), 1.0)
 
-    latitude, longitude = to_latitude_longitude(x[32, 27], y[32, 27], z[32, 27])
+    latitude, longitude = cartesian_to_selenographic(x[32, 27], y[32, 27], z[32, 27])
     assert (latitude, longitude) == pytest.approx((3.30, 39.15), abs=1e-6)
 
 
@@ -268,7 +333,7 @@ def test_high_resolution_camera_sees_a_narrower_field():
 
 def test_oblique_frames_are_level_with_the_horizon_up():
     camera = frame_camera(_projected(0, 30, 100, (0, 33)))  # looking west
-    target = np.array(_to_cartesian(0, 30))
+    target = np.array(selenographic_to_cartesian(0, 30))
 
     assert camera.up @ target > 0.5
 
@@ -290,3 +355,61 @@ def test_high_altitude_frames_roll_to_match_a_black_sky():
     assert np.allclose(camera.up, rolled.up)
     low = replace(frame, frame_id="low", altitude_km=900.0, texture=texture)
     assert not np.allclose(frame_camera(low).up, _rolled(frame_camera(low), 1).up)
+
+
+def test_frame_geometry_measures_the_projected_footprint():
+    geometry = frame_geometry(_projected(0, 0, 46, (0, 0)))
+
+    assert geometry.projected
+    assert geometry.width_km == pytest.approx(31.6, abs=0.3)
+    assert geometry.height_km == pytest.approx(37.4, abs=0.3)
+    assert geometry.implied_emission == pytest.approx(0.0, abs=1e-6)
+
+
+def test_frame_geometry_counts_only_ground_seen_past_the_limb():
+    geometry = frame_geometry(_projected(0, 40, 1500, (0, 0)))
+
+    # Wider than a nadir view, but never more than the visible hemisphere.
+    assert 500 < geometry.width_km < math.pi * MOON_RADIUS_KM
+
+
+def test_frame_geometry_falls_back_to_the_approximate_patch():
+    geometry = frame_geometry(_image(altitude_km=46.0, size=(32, 24)))
+
+    assert not geometry.projected
+    assert geometry.implied_emission is None
+    assert geometry.height_km == pytest.approx(geometry.width_km * 32 / 24)
+
+
+def test_implied_emission_matches_the_lpi_value_for_frame_1041():
+    # LPI: emission 16.95° for frame 1041.
+    assert implied_emission_angle(_projected()) == pytest.approx(16.95, abs=0.35)
+
+
+def test_footprint_outline_of_a_whole_disc_shot_follows_the_limb():
+    # From 5500 km the 80 mm frame is wider than the Moon: no edge touches it.
+    image = replace(_projected(0, 0, 5500, (0, 0)), texture=np.zeros((65, 55)))
+
+    outline = footprint_outline(image)
+
+    # The visible cap reaches acos(R / (R + h)) ≈ 76.1° from the centre.
+    limb = math.degrees(math.acos(MOON_RADIUS_KM / (MOON_RADIUS_KM + 5500)))
+    distances = [
+        math.degrees(
+            math.acos(math.cos(math.radians(lat)) * math.cos(math.radians(lon)))
+        )
+        for lat, lon in outline
+    ]
+    assert len(outline) > 20
+    assert min(distances) == pytest.approx(limb, abs=0.1)
+    assert max(distances) <= limb + 1e-6
+
+
+def test_rotation_script_starts_from_the_globe_camera_distance():
+    script = (
+        Path(__file__).parents[1] / "orbiter" / "assets" / "rotation.js"
+    ).read_text()
+
+    match = re.search(r"FULL_SPEED_DISTANCE = ([\d.]+);", script)
+    assert match is not None
+    assert float(match.group(1)) == CAMERA_DISTANCE

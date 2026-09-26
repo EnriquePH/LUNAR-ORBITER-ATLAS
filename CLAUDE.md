@@ -33,11 +33,13 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   si se entra sin `?lang=`; también fijan `<html lang>`.
   Callbacks: `update_frame` (5 salidas), `render_globe`, `list_mission_frames` (arranca
   el `LOADER`), `poll_mosaic` (Interval), `select_clicked_image` (el click solo
-  selecciona la foto; **no la oculta**) y `select_frame`. Se prueban llamándolos
+  selecciona la foto; **no la oculta**), `select_frame`, `select_random_frame`,
+  `export_csv` y `export_geojson` (`dcc.Download`). Se prueban llamándolos
   directamente.
 - `orbiter/globe.py` — figura Plotly: esfera base, **todas las teselas en un único
   `Mesh3d`** (200 `Surface` congelan el navegador), foto seleccionada como `Surface`,
-  marcador, contorno de fotos de gran altitud (>`HIGH_ALTITUDE_KM`), ecuador y polos
+  marcador, etiqueta con el ID en el centro de cada foto (`_frame_labels`; la
+  seleccionada en naranja), contorno de fotos de gran altitud (>`HIGH_ALTITUDE_KM`), ecuador y polos
   (`hoverinfo="skip"` para no robar clicks).
   **Proyección** (`frame_camera`): cámara estenopeica desde la posición de la nave hacia
   el punto principal; cada píxel es un rayo que corta la esfera (NaN si no la toca).
@@ -51,9 +53,15 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   Plotly colorea por vértice (1 píxel = 1 vértice): `tile_textures` reparte la
   resolución con un tope de `MESH_VERTEX_BUDGET`. El click se resuelve por geometría
   (`patch_contains` → `FrameCamera.sees`), no por índices de traza.
+  `frame_geometry` (huella en km, emisión implícita) y `footprint_outline`
+  buscan el limbo por bisección desde el punto principal (`_border_distances`):
+  cerca del limbo la proyección es singular y una rejilla se queda corta.
+- `orbiter/export.py` — CSV de metadatos y GeoJSON de huellas (grados
+  selenográficos, no WGS 84; anillos antihorarios, longitudes continuas y
+  cierre por el polo si lo rodean).
 - `orbiter/catalog.py` — `MissionLoader` descarga en hilos todas las fotos de una
   misión; `TileStore` cachea página+miniatura en `data/lpi/` (escritura atómica,
-  sin caducidad: se recarga borrando la carpeta), 3 workers con un límite
+  sin caducidad: se recarga borrando la carpeta; `metadata()` lee el JSON sin descargar), 3 workers con un límite
   compartido de 4 peticiones/s.
 - `orbiter/lpi.py` — cliente y parser del LPI; el parser devuelve `FrameMetadata`
   (`TypedDict`). Errores como `LpiError(key, **params)` que la app traduce con
@@ -61,6 +69,10 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - `orbiter/i18n.py` — todos los textos de la UI en `TEXTS["es"|"en"]`; `t(lang, key)`.
 - `orbiter/reference.py` — pestañas «La Luna» y «Programa Lunar Orbiter»
   (`CONTENT["es"|"en"]`), texto CC BY-SA 4.0 resumido de Wikipedia.
+- `orbiter/assets/rotation.js` — antes de que Plotly procese un click o la rueda
+  en el globo, escala `camera.rotateSpeed` con la altura sobre la superficie y
+  limita el zoom (`view.setDistanceLimits`) para no atravesar la Luna. Usa
+  internos de Plotly (`_fullLayout.scene._scene`): revísalo si se actualiza.
 - `orbiter/assets/style.css` — todo el CSS. **Única fuente: DM Mono** (pesos 300–500,
   sin 600/700), también en la figura de Plotly. Desplegables de Dash 4 tematizados con
   variables `--Dash-*`; su menú abierto va en un portal fuera de `.side-panel`.
