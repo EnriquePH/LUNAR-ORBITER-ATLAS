@@ -27,14 +27,14 @@ Usa siempre el entorno `.venv` (Python 3.14; el proyecto declara >=3.10):
 - `orbiter/app.py` — app Dash: layout y tres callbacks:
   `list_mission_frames` (misión → opciones), `select_frame` (opción → input `frame-id`)
   y `update_frame` (5 salidas; se dispara con el botón, con Intro en el input o al
-  elegir fotograma).
+  elegir fotograma). `make_globe` devuelve una `go.Figure` de Plotly: esfera base +
+  parche `go.Surface` con la textura del fotograma (`surfacecolor`) + marcador, con la
+  cámara centrada en el punto principal. La rotación es en el navegador. El parche es
+  esquemático (`PATCH_WIDTH_DEGREES` fijo), no un mosaico cartográfico.
 - `orbiter/assets/style.css` — todo el CSS (Dash sirve `assets/` automáticamente; se
   incluye en el paquete vía `package-data`). Los desplegables de Dash 4 se tematizan
   con variables `--Dash-*` en `.side-panel`; el menú abierto (`.dash-dropdown-content`)
-  se renderiza en un portal fuera de ese contenedor. `make_globe` devuelve una `go.Figure` de Plotly: esfera
-  base + parche `go.Surface` con la textura del fotograma (`surfacecolor`) + marcador,
-  con la cámara centrada en el punto principal. La rotación es en el navegador.
-  El parche es esquemático (`PATCH_WIDTH_DEGREES` fijo), no un mosaico cartográfico.
+  se renderiza en un portal fuera de ese contenedor.
 - `tests/` — pytest; la red se simula con `monkeypatch` sobre `orbiter.lpi.requests.get`
   (o sobre `orbiter.app.fetch_*` en los tests de callbacks, que se llaman directamente).
 - `LUNAR ORBITER.ipynb` — cuaderno exploratorio original (2020). Excluido de Ruff; no
@@ -43,8 +43,9 @@ Usa siempre el entorno `.venv` (Python 3.14; el proyecto declara >=3.10):
 ## Convenciones
 
 - Textos de UI, mensajes de error y README en **español**; identificadores y docstrings en inglés.
-- Los tests nunca deben hacer peticiones reales al LPI. Como `_fetch_frame_cached` es
-  una caché global, usa IDs distintos por test o limpia la caché (`cache_clear()`).
+- Los tests nunca deben hacer peticiones reales al LPI. Las cachés `lru_cache` de
+  `lpi.py` se limpian en un fixture `autouse` de `tests/conftest.py`; si añades otra
+  caché, límpiala ahí también.
 - No guardar imágenes descargadas en el repo (`/data/` y `/outputs/` están en `.gitignore`).
   La licencia MIT cubre solo el código, no el material del LPI.
 - Sé conservador con peticiones al LPI (caché, timeouts, un fotograma por acción).
