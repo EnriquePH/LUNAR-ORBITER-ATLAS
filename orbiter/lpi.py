@@ -58,8 +58,8 @@ def _section(text: str, label: str) -> str:
     if start is None:
         return ""
     others = "|".join(re.escape(other) for other in _SECTION_LABELS if other != label)
-    end = re.search(rf"(?:{others})", text[start.end():], re.IGNORECASE)
-    return text[start.end():start.end() + end.start()] if end else text[start.end():]
+    end = re.search(rf"(?:{others})", text[start.end() :], re.IGNORECASE)
+    return text[start.end() : start.end() + end.start()] if end else text[start.end() :]
 
 
 def _optional_number(section: str, label: str) -> float | None:
@@ -76,9 +76,7 @@ def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float | N
     soup = BeautifulSoup(page_html, "html.parser")
     text = " ".join(soup.stripped_strings)
 
-    mission_match = re.search(
-        r"Mission:\s*(Lunar Orbiter\s+\d+)", text, re.IGNORECASE
-    )
+    mission_match = re.search(r"Mission:\s*(Lunar Orbiter\s+\d+)", text, re.IGNORECASE)
     point_match = re.search(
         r"Principal Point:\s*Latitude:\s*(-?\d+(?:\.\d+)?)°?\s*"
         r"Longitude:\s*(-?\d+(?:\.\d+)?)°?",
@@ -93,13 +91,16 @@ def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float | N
         re.IGNORECASE,
     )
     image_urls = [
-        link.get("href", "")
-        for link in soup.find_all("a", href=image_pattern)
+        link.get("href", "") for link in soup.find_all("a", href=image_pattern)
     ]
     if not image_urls:
-        raise ValueError(f"No se encontró una vista previa para el fotograma {frame_id}.")
+        raise ValueError(
+            f"No se encontró una vista previa para el fotograma {frame_id}."
+        )
 
-    image_url = next((url for url in image_urls if url.endswith("_med.jpg")), image_urls[0])
+    image_url = next(
+        (url for url in image_urls if url.endswith("_med.jpg")), image_urls[0]
+    )
     image_url = urljoin(frame_url(frame_id), image_url)
 
     return {

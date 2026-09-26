@@ -12,24 +12,30 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = [
     "beautifulsoup4>=4.12",
-    "dash>=2.17",
+    "dash>=4.0",
     "numpy>=1.26",
-    "pandas>=2.1",
     "pillow>=10.0",
     "plotly>=5.22",
     "requests>=2.31",
-    "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]
-dev = [
+notebook = [
     "jupyter>=1.0",
+    "pandas>=2.1",
+    "tqdm>=4.66",
+]
+dev = [
+    "lunar-orbiter[notebook]",
     "pytest>=8.0",
     "ruff>=0.5",
 ]
 
 [tool.setuptools.packages.find]
 include = ["orbiter*"]
+
+[tool.setuptools.package-data]
+orbiter = ["assets/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -40,4 +46,4 @@ line-length = 88
 extend-exclude = ["LUNAR ORBITER.ipynb"]
 
 [tool.ruff.lint]
-select = ["E4", "E7", "E9", "F", "I", "FURB", "C4"]
+select = ["E", "W", "F", "I", "FURB", "C4"]

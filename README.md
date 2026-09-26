@@ -24,6 +24,10 @@ python -m pip install -e ".[dev]"
 python -m orbiter.app
 ```
 
+Para usar solo el visor basta con `python -m pip install -e .`; el extra
+`notebook` añade Jupyter, pandas y tqdm para el cuaderno, y `dev` incluye
+además las herramientas de desarrollo.
+
 En Windows, activa el entorno con `.venv\Scripts\activate`.
 La aplicación queda disponible en <http://127.0.0.1:8050>.
 
@@ -65,11 +69,12 @@ esos materiales dependen de sus respectivas fuentes.
 ## Desarrollo
 
 Las herramientas de desarrollo incluidas en el extra `dev` son pytest, Ruff y
-Jupyter. Ejecuta las comprobaciones con:
+las dependencias del cuaderno. Ejecuta las comprobaciones con:
 
 ```bash
 pytest
 ruff check .
+ruff format --check .
 ```
 
 ## Licencia
