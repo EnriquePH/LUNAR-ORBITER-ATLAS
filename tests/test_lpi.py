@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from orbiter.lpi import (
+    LpiError,
     fetch_frame,
     fetch_mission_frames,
     parse_frame_page,
@@ -86,8 +87,12 @@ def test_fetch_mission_frames_rejects_unknown_mission(monkeypatch, mission):
         "orbiter.lpi.requests.get", lambda *a, **k: pytest.fail("sin red")
     )
 
-    with pytest.raises(ValueError, match="entre 1 y 5"):
+    with pytest.raises(LpiError, match="between 1 and 5") as raised:
         fetch_mission_frames(mission)
+    assert (raised.value.key, raised.value.params) == (
+        "invalid_mission",
+        {"missions": 5},
+    )
 
 
 def test_fetch_mission_frames_downloads_once(monkeypatch):
@@ -105,8 +110,9 @@ def test_fetch_mission_frames_downloads_once(monkeypatch):
 
 
 def test_parse_frame_page_requires_principal_point():
-    with pytest.raises(ValueError, match="No se encontraron coordenadas"):
+    with pytest.raises(LpiError, match="No coordinates") as raised:
         parse_frame_page("1041", '<a href="/images/preview/1041_med.jpg">image</a>')
+    assert raised.value.key == "no_coordinates"
 
 
 def test_fetch_frame_rejects_invalid_id_without_network(monkeypatch):
@@ -115,8 +121,9 @@ def test_fetch_frame_rejects_invalid_id_without_network(monkeypatch):
 
     monkeypatch.setattr("orbiter.lpi.requests.get", fail_if_requested)
 
-    with pytest.raises(ValueError, match="solo números"):
+    with pytest.raises(LpiError, match="digits only") as raised:
         fetch_frame("10/41")
+    assert raised.value.key == "invalid_frame_id"
 
 
 def test_fetch_frame_downloads_page_and_preview(monkeypatch):

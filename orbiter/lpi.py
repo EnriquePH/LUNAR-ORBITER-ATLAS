@@ -12,7 +12,28 @@ from bs4 import BeautifulSoup
 
 from orbiter.urls import MISSIONS_NUM, frame_url, mission_url
 
-USER_AGENT = "LunarOrbiterLocalViewer/0.1 (educational; contact: local user)"
+USER_AGENT = "LunarOrbiterLocalViewer/0.1 (educational; +https://www.energycode.org/)"
+
+
+class LpiError(ValueError):
+    """A problem with LPI data, identified by a translatable ``key``.
+
+    The app turns ``key`` and ``params`` into text with ``orbiter.i18n``; the
+    plain message is English for logs and non-UI callers.
+    """
+
+    MESSAGES = {
+        "invalid_frame_id": "The frame ID must contain digits only.",
+        "no_coordinates": "No coordinates found for frame {frame_id}.",
+        "no_preview": "No preview found for frame {frame_id}.",
+        "invalid_mission": "The mission must be between 1 and {missions}.",
+        "no_frames": "No frames found for mission {mission}.",
+    }
+
+    def __init__(self, key: str, **params: object):
+        self.key = key
+        self.params = params
+        super().__init__(self.MESSAGES[key].format(**params))
 
 
 @dataclass(frozen=True)
@@ -84,7 +105,7 @@ def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float | N
         re.IGNORECASE,
     )
     if point_match is None:
-        raise ValueError(f"No se encontraron coordenadas para el fotograma {frame_id}.")
+        raise LpiError("no_coordinates", frame_id=frame_id)
 
     image_pattern = re.compile(
         rf"/images/preview/{re.escape(frame_id)}_(?:med|h[123])\.jpg$",
@@ -94,9 +115,7 @@ def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float | N
         link.get("href", "") for link in soup.find_all("a", href=image_pattern)
     ]
     if not image_urls:
-        raise ValueError(
-            f"No se encontró una vista previa para el fotograma {frame_id}."
-        )
+        raise LpiError("no_preview", frame_id=frame_id)
 
     image_url = next(
         (url for url in image_urls if url.endswith("_med.jpg")), image_urls[0]
@@ -130,7 +149,7 @@ def fetch_frame(frame_id: str) -> OrbiterFrame:
     """Fetch one frame page and its medium-resolution LPI preview."""
     frame_id = str(frame_id).strip()
     if not frame_id.isdigit():
-        raise ValueError("El identificador del fotograma debe contener solo números.")
+        raise LpiError("invalid_frame_id")
 
     return _fetch_frame_cached(frame_id)
 
@@ -161,7 +180,7 @@ def _fetch_frame_cached(frame_id: str) -> OrbiterFrame:
 def fetch_mission_frames(mission: int) -> list[str]:
     """Fetch the frame IDs of one mission (1–5); results are cached."""
     if mission not in range(1, MISSIONS_NUM + 1):
-        raise ValueError(f"La misión debe estar entre 1 y {MISSIONS_NUM}.")
+        raise LpiError("invalid_mission", missions=MISSIONS_NUM)
     return list(_fetch_mission_frames_cached(mission))
 
 
@@ -173,5 +192,5 @@ def _fetch_mission_frames_cached(mission: int) -> tuple[str, ...]:
     response.raise_for_status()
     frame_ids = parse_mission_page(response.text)
     if not frame_ids:
-        raise ValueError(f"No se encontraron fotogramas para la misión {mission}.")
+        raise LpiError("no_frames", mission=mission)
     return tuple(frame_ids)

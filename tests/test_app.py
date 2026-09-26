@@ -9,19 +9,23 @@ from PIL import Image
 from orbiter import app as app_module
 from orbiter.app import (
     TEXTURE_SIZE,
+    describe_error,
     describe_hidden,
     globe_image,
     hide_clicked_image,
+    language_from_search,
     list_mission_frames,
     metadata_rows,
     poll_mosaic,
     render_globe,
+    render_page,
     select_frame,
+    serve_layout,
     update_frame,
 )
 from orbiter.catalog import MissionProgress
 from orbiter.globe import GlobeImage, _to_cartesian
-from orbiter.lpi import OrbiterFrame
+from orbiter.lpi import LpiError, OrbiterFrame
 
 UPDATE_FRAME_OUTPUTS = 5
 STATUS_INDEX = 4
@@ -232,3 +236,67 @@ def test_describe_hidden_counts_and_disables_button():
 def test_select_frame_loads_and_unhides_frame():
     assert select_frame("1006", ["1005", "1006"]) == ("1006", ["1005"])
     assert select_frame(None, ["1005"]) == (no_update, no_update)
+
+
+def test_describe_error_translates_lpi_errors():
+    error = LpiError("no_frames", mission=4)
+
+    assert describe_error("en", error) == "No frames found for mission 4."
+    assert describe_error("es", error) == (
+        "No se encontraron fotogramas para la misión 4."
+    )
+    assert describe_error("en", requests.Timeout("slow")) == "slow"
+
+
+def test_update_frame_reports_status_in_english(monkeypatch):
+    monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
+
+    _, _, rows, _, status = update_frame(1, 0, "1041", "en")
+
+    assert status == "LPI ONLINE · 1041 · PREVIEW RECEIVED"
+    assert _row_values(rows)["PRINCIPAL POINT"] == "3.30° N  /  39.15° E"
+
+
+def test_update_frame_translates_invalid_id(monkeypatch):
+    def fail(frame_id):
+        raise LpiError("invalid_frame_id")
+
+    monkeypatch.setattr(app_module, "fetch_frame", fail)
+
+    status = update_frame(1, 0, "x", "en")[STATUS_INDEX]
+
+    assert status == "COULD NOT LOAD · The frame ID must contain digits only."
+
+
+@pytest.mark.parametrize(
+    ("lang", "title", "tab"),
+    [
+        ("es", "Atlas orbital lunar", "La Luna"),
+        ("en", "Lunar orbital atlas", "The Moon"),
+    ],
+)
+def test_serve_layout_renders_requested_language(lang, title, tab):
+    layout = str(serve_layout(lang))
+
+    assert title in layout
+    assert tab in layout
+    assert f"Store(id='lang', data='{lang}')" in layout
+
+
+@pytest.mark.parametrize(
+    ("search", "lang"),
+    [
+        ("?lang=en", "en"),
+        ("?lang=es", "es"),
+        ("?lang=xx", "es"),
+        ("", "es"),
+        (None, "es"),
+    ],
+)
+def test_language_from_search_falls_back_to_config(search, lang):
+    assert language_from_search(search) == lang
+
+
+def test_render_page_uses_query_string_language():
+    assert "Lunar orbital atlas" in str(render_page("?lang=en"))
+    assert "Atlas orbital lunar" in str(render_page("?foo=1"))

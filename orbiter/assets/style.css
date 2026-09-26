@@ -69,3 +69,36 @@ h1 { margin:5px 0 0; font:600 42px 'Newsreader',serif; letter-spacing:0; }
 .text-button { border:0; background:none; padding:0; color:#ff8a61; font:9px 'DM Mono',monospace; letter-spacing:.4px; cursor:pointer; white-space:nowrap; }
 .text-button:hover { color:#ffc1aa; }
 .text-button:disabled { color:#5c5e5f; cursor:default; }
+
+/* Language switch */
+.topbar-end { display:flex; align-items:center; gap:22px; }
+.lang-switch { display:flex; border:1px solid #333537; }
+.lang-link { padding:6px 9px; color:#aaa7a0; font:10px 'DM Mono',monospace; letter-spacing:.7px; text-decoration:none; }
+.lang-link:hover { color:#e6e3dd; }
+.lang-link--active { background:#ff7547; color:#101112; }
+.lang-link--active:hover { color:#101112; }
+
+/* Tabs */
+.tabs { display:flex; gap:0; border-top:1px solid #333537; }
+.tab { flex:0 0 auto !important; padding:12px 18px !important; background:none !important; border:0 !important; border-bottom:2px solid transparent !important; color:#aaa7a0 !important; font:10px 'DM Mono',monospace !important; letter-spacing:1px; text-transform:uppercase; cursor:pointer; }
+.tab:hover { color:#e6e3dd !important; }
+.tab--selected { color:#ff8a61 !important; border-bottom-color:#ff7547 !important; }
+
+/* Reference tabs */
+.reference-layout { display:grid; gap:30px; padding:26px 0; border-top:1px solid #333537; border-bottom:1px solid #333537; }
+.reference-intro { max-width:880px; }
+.reference-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:26px 32px; }
+.reference-card { min-width:0; }
+.reference-heading { margin:0 0 10px; font:500 17px 'Newsreader',serif; color:#e6e3dd; }
+.summary-list { margin:14px 0 0; padding-left:18px; color:#cfccc5; font-size:14px; line-height:1.7; }
+.summary-list li { margin-bottom:6px; }
+.source-note { margin:14px 0 0; color:#777973; font:10px 'DM Mono',monospace; letter-spacing:.3px; }
+.source-note a { color:#ff8a61; }
+.table-scroll { overflow-x:auto; }
+.mission-table { width:100%; border-collapse:collapse; font:11px 'DM Mono',monospace; }
+.mission-table th { text-align:left; color:#777973; font-weight:400; text-transform:uppercase; letter-spacing:.5px; padding:9px 12px 9px 0; border-bottom:1px solid #333537; }
+.mission-table td { color:#e6e3dd; padding:9px 12px 9px 0; border-bottom:1px solid #292b2c; white-space:nowrap; }
+@media(max-width:560px) {
+    .topbar-end { gap:0; }
+    .reference-cards { grid-template-columns:minmax(0,1fr); }
+}

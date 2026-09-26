@@ -1,83 +1,115 @@
-# Lunar Orbiter
+# Lunar Orbiter Atlas
 
-Aplicación Python local para explorar fotografías del archivo Lunar Orbiter del
-Lunar and Planetary Institute (LPI) sobre una esfera lunar 3D.
+A local web app for exploring the photographs of NASA's Lunar Orbiter missions
+(1966–1967) on an interactive 3D Moon. Images and metadata come from the
+[Lunar and Planetary Institute (LPI) Lunar Orbiter Photo Gallery](https://www.lpi.usra.edu/resources/lunarorbiter/).
 
-Fuente: <https://www.lpi.usra.edu/resources/lunarorbiter/>.
+Repository: <https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS>
 
-## Estado
+## Features
 
-La aplicación obtiene del LPI la vista previa y las coordenadas del fotograma
-seleccionado. La imagen se muestra en el panel y como un parche de textura
-aproximado, centrado en las coordenadas del punto principal; no representa un
-mosaico cartográfico completo. El cuaderno exploratorio original se conserva.
+- **Mission mosaic** — every frame of the selected mission is drawn on the
+  globe at its principal point, sized from the spacecraft altitude. Click a
+  photo to hide it and show its details; **Show hidden** brings them back.
+- **Frame details** — LPI preview, principal point, spacecraft altitude and
+  position, and illumination angles (sun azimuth, incidence, emission, phase).
+- **Reference tabs** — summarised facts about the Moon and the Lunar Orbiter
+  program, with their Wikipedia sources.
+- **English and Spanish** — switch with the **ES | EN** control in the top bar
+  (or open `?lang=en` / `?lang=es`).
+- Equator and north/south poles are marked on the globe.
 
-## Instalación
+Photo placement is approximate: each frame is a north-up patch centred on its
+principal point, not a map-projected mosaic.
 
-Requiere Python 3.10 o posterior.
+## Quick start
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-python -m orbiter.app
-```
-
-Para usar solo el visor basta con `python -m pip install -e .`; el extra
-`notebook` añade Jupyter, pandas y tqdm para el cuaderno, y `dev` incluye
-además las herramientas de desarrollo.
-
-En Windows, activa el entorno con `.venv\Scripts\activate`.
-La aplicación queda disponible en <http://127.0.0.1:8050>.
-
-## Uso
-
-```python
-from orbiter.urls import MISSIONS_NUM, frame_url, mission_url
-
-print(MISSIONS_NUM)
-print(mission_url(1))
-print(frame_url("1041"))
-```
-
-Para abrir el cuaderno:
+Requires Python 3.10 or later, on Linux or macOS.
 
 ```bash
-jupyter lab "LUNAR ORBITER.ipynb"
+make install   # create .venv and install the app with dev tools
+make run       # start the app
 ```
 
-En el visor, elige una misión y uno de sus fotogramas en los selectores, o
-introduce un identificador como `1041` y pulsa **Cargar** (o Intro). El panel
-muestra el punto principal, la posición y altitud de la nave y los ángulos de
-iluminación publicados por el LPI. La esfera se centra en el fotograma; arrástrala para rotarla y usa
-la rueda del ratón para acercarte.
+Then open <http://127.0.0.1:8050/>. `make run` calls `scripts/run.sh`, which
+creates `.venv` if needed and stops an earlier instance of the app that is
+still holding the port.
 
-## Descargas y atribución
-
-Las imágenes se solicitan al LPI cuando se carga un fotograma y se mantienen en
-una caché de memoria limitada a 16 fotogramas (y las listas de las 5 misiones)
-para evitar solicitudes repetidas; no se copian al repositorio. Consulta las condiciones de uso antes de
-automatizar solicitudes o redistribuir imágenes. Evita cargas innecesarias y
-conserva la URL de origen y los metadatos de atribución publicados por el
-archivo.
-
-La licencia MIT de este repositorio cubre el código propio, no las imágenes,
-metadatos ni otros materiales servidos por el LPI. Los derechos y condiciones de
-esos materiales dependen de sus respectivas fuentes.
-
-## Desarrollo
-
-Las herramientas de desarrollo incluidas en el extra `dev` son pytest, Ruff y
-las dependencias del cuaderno. Ejecuta las comprobaciones con:
+Without `make`:
 
 ```bash
-pytest
-ruff check .
-ruff format --check .
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+.venv/bin/lunar-orbiter      # or: .venv/bin/python -m orbiter.app
 ```
 
-## Licencia
+On Windows, use `.venv\Scripts\python -m orbiter.app`.
 
-El código de este proyecto se distribuye bajo la licencia MIT. Consulta
-[LICENSE](LICENSE).
+## Configuration
+
+Settings live in `config.json` at the project root:
+
+```json
+{
+  "host": "127.0.0.1",
+  "port": 8050,
+  "language": "es"
+}
+```
+
+| Key        | Meaning                                  |
+|------------|------------------------------------------|
+| `host`     | Interface the server listens on          |
+| `port`     | Server port                              |
+| `language` | Default interface language: `es` or `en` |
+
+Set `ORBITER_CONFIG` to use another file, and `ORBITER_CACHE_DIR` to move the
+download cache (default: `data/lpi`).
+
+## Downloads and attribution
+
+The first time a mission is shown, the app downloads the LPI page and small
+thumbnail of each of its frames (about 200 per mission) and caches them in
+`data/lpi/`, so later runs work from disk. Downloads use three workers and at
+most four requests per second. Frame previews are fetched on demand and kept in
+a small in-memory cache. Nothing downloaded is committed to the repository.
+
+Check the LPI terms of use before automating requests or redistributing images,
+and keep the source URL and attribution metadata that the archive publishes.
+
+## Development
+
+```bash
+make test     # pytest
+make lint     # Ruff lint and format check
+make format   # apply Ruff fixes and formatting
+make check    # lint + test
+make help     # list all targets
+```
+
+Project layout:
+
+| Path                       | Purpose                                             |
+|----------------------------|-----------------------------------------------------|
+| `orbiter/app.py`           | Dash layout and callbacks                           |
+| `orbiter/globe.py`         | Plotly globe: sphere, photo mosaic, markers         |
+| `orbiter/catalog.py`       | Background mission download with on-disk cache      |
+| `orbiter/lpi.py`           | LPI page client and parser                          |
+| `orbiter/i18n.py`          | Interface text in Spanish and English               |
+| `orbiter/reference.py`     | Moon and Lunar Orbiter program tabs                 |
+| `orbiter/config.py`        | `config.json` loader                                |
+| `orbiter/assets/style.css` | Styles (served automatically by Dash)               |
+| `scripts/run.sh`           | Launch script used by `make run`                    |
+
+## License
+
+The code is released under the [MIT License](LICENSE), © 2026
+[ENERGYCODE](https://www.energycode.org/). Maintainer:
+<energycode.org@gmail.com>.
+
+The MIT license covers this project's code only. LPI images and metadata belong
+to their respective owners. The reference tabs summarise Wikipedia articles
+([Luna](https://es.wikipedia.org/wiki/Luna),
+[Lunar Orbiter program](https://en.wikipedia.org/wiki/Lunar_Orbiter_program))
+and that text is available under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).

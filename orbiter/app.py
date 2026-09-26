@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 from io import BytesIO
+from urllib.parse import parse_qs
 
 import numpy as np
 import requests
@@ -11,6 +12,7 @@ from dash import Dash, Input, Output, State, dcc, html, no_update
 from PIL import Image
 
 from orbiter.catalog import MissionLoader, TileStore, default_cache_dir
+from orbiter.config import load_config
 from orbiter.globe import (
     GlobeImage,
     format_coordinates,
@@ -18,7 +20,9 @@ from orbiter.globe import (
     make_globe,
     visible_images,
 )
-from orbiter.lpi import OrbiterFrame, fetch_frame, fetch_mission_frames
+from orbiter.i18n import LANGUAGES, normalize_language, t
+from orbiter.lpi import LpiError, OrbiterFrame, fetch_frame, fetch_mission_frames
+from orbiter.reference import moon_tab, program_tab
 from orbiter.urls import MISSIONS_NUM, frame_url
 
 DEFAULT_FRAME_ID = "1041"
@@ -27,6 +31,7 @@ TEXTURE_SIZE = (256, 256)
 # Re-render the globe after this many new tiles while a mission is loading.
 MOSAIC_RENDER_STEP = 25
 
+CONFIG = load_config()
 LOADER = MissionLoader(TileStore(default_cache_dir()))
 
 
@@ -47,6 +52,13 @@ def globe_image(frame: OrbiterFrame) -> GlobeImage:
     )
 
 
+def describe_error(lang: str, error: Exception) -> str:
+    """Translate LPI errors; other errors keep their own (technical) message."""
+    if isinstance(error, LpiError):
+        return t(lang, f"error_{error.key}", **error.params)
+    return str(error)
+
+
 def _metadata_row(label: str, value: str = "—") -> html.Div:
     return html.Div(
         [
@@ -63,7 +75,7 @@ def _degrees(*values: float | None) -> str:
     return "  /  ".join(f"{value:.2f}°" for value in values)
 
 
-def metadata_rows(frame: OrbiterFrame) -> list[html.Div]:
+def metadata_rows(frame: OrbiterFrame, lang: str = "es") -> list[html.Div]:
     """Build the side-panel rows; fields missing from the LPI page show "—"."""
     spacecraft_position = "—"
     if frame.spacecraft_latitude is not None and frame.spacecraft_longitude is not None:
@@ -76,19 +88,20 @@ def metadata_rows(frame: OrbiterFrame) -> list[html.Div]:
         else f"{frame.spacecraft_altitude_km:.2f} km"
     )
     return [
-        _metadata_row("MISIÓN", frame.mission),
-        _metadata_row("FOTOGRAMA", frame.frame_id),
+        _metadata_row(t(lang, "meta_mission"), frame.mission),
+        _metadata_row(t(lang, "meta_frame"), frame.frame_id),
         _metadata_row(
-            "PUNTO PRINCIPAL", format_coordinates(frame.latitude, frame.longitude)
+            t(lang, "meta_principal_point"),
+            format_coordinates(frame.latitude, frame.longitude),
         ),
-        _metadata_row("ALTITUD DE LA NAVE", altitude),
-        _metadata_row("POSICIÓN DE LA NAVE", spacecraft_position),
-        _metadata_row("ACIMUT SOLAR", _degrees(frame.sun_azimuth)),
+        _metadata_row(t(lang, "meta_altitude"), altitude),
+        _metadata_row(t(lang, "meta_spacecraft_position"), spacecraft_position),
+        _metadata_row(t(lang, "meta_sun_azimuth"), _degrees(frame.sun_azimuth)),
         _metadata_row(
-            "INCIDENCIA / EMISIÓN",
+            t(lang, "meta_incidence_emission"),
             _degrees(frame.incidence_angle, frame.emission_angle),
         ),
-        _metadata_row("ÁNGULO DE FASE", _degrees(frame.phase_angle)),
+        _metadata_row(t(lang, "meta_phase"), _degrees(frame.phase_angle)),
     ]
 
 
@@ -98,208 +111,271 @@ FONTS_URL = (
     "&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap"
 )
 
-app = Dash(__name__, external_stylesheets=[FONTS_URL])
+# Pages are built by a callback, so their component IDs are not in the
+# initial layout; the callbacks below still validate against serve_layout().
+app = Dash(
+    __name__, external_stylesheets=[FONTS_URL], suppress_callback_exceptions=True
+)
 app.title = "Lunar Orbiter | Atlas"
 
 
-app.layout = html.Div(
-    [
-        dcc.Interval(id="initial-load", interval=500, n_intervals=0, max_intervals=1),
-        dcc.Interval(id="mosaic-poll", interval=1000, disabled=True),
-        dcc.Store(id="selected-frame"),
-        dcc.Store(id="hidden-frames", data=[]),
-        dcc.Store(id="mosaic-count", data=0),
-        html.Header(
-            [
-                html.Div(
-                    [
-                        html.Div("LO", className="brand-mark"),
-                        html.Div(
-                            ["LUNAR ORBITER", html.Br(), "PHOTO ARCHIVE / FIELD ATLAS"],
-                            className="brand-copy",
-                        ),
-                    ],
-                    className="wordmark",
-                ),
-                html.Div(
-                    "LPI DIGITAL ARCHIVE     ·     LOCAL VIEWER", className="top-meta"
-                ),
-            ],
-            className="topbar",
-        ),
-        html.Section(
-            [
-                html.Div(
-                    [
-                        html.Div(
-                            "EXPLORACIÓN FOTOGRÁFICA · 1966—1967", className="eyebrow"
-                        ),
-                        html.H1("Atlas orbital lunar"),
-                    ]
-                ),
-                html.Div(
-                    "Fotogramas históricos del archivo LPI proyectados sobre "
-                    "una esfera interactiva.",
-                    className="title-note",
-                ),
-            ],
-            className="page-title",
-        ),
-        html.Main(
-            [
-                html.Section(
-                    [
-                        html.Div(
-                            "VISTA 3D  /  ARRASTRA PARA ROTAR · CLICK EN UNA FOTO PARA "
-                            "OCULTARLA",
-                            className="globe-label",
-                        ),
-                        dcc.Graph(
-                            id="globe",
-                            figure=make_globe(),
-                            className="globe-render",
-                            config={"displayModeBar": False, "responsive": True},
-                        ),
-                        html.Div(
-                            "POSICIÓN Y TAMAÑO APROXIMADOS · ORIENTACIÓN NORTE ARRIBA",
-                            className="globe-coordinates",
-                        ),
-                    ],
-                    className="globe-panel",
-                ),
-                html.Aside(
-                    [
-                        html.Div(
-                            [
-                                html.Div(
-                                    "ARCHIVO DE IMÁGENES", className="section-kicker"
-                                ),
-                                html.H2("Fotograma", className="side-heading"),
-                            ],
-                            className="source-block",
-                        ),
-                        html.Div(
-                            [
-                                html.Div(
-                                    [
-                                        dcc.Dropdown(
-                                            id="mission-select",
-                                            options=[
-                                                {
-                                                    "label": f"Lunar Orbiter {number}",
-                                                    "value": number,
-                                                }
-                                                for number in range(1, MISSIONS_NUM + 1)
-                                            ],
-                                            value=DEFAULT_MISSION,
-                                            placeholder="MISIÓN",
-                                            clearable=False,
-                                            searchable=False,
-                                        ),
-                                        dcc.Dropdown(
-                                            id="frame-select",
-                                            options=[],
-                                            placeholder="FOTOGRAMA",
-                                            disabled=True,
-                                        ),
-                                    ],
-                                    className="selector-row",
-                                ),
-                                html.Div(
-                                    [
-                                        html.Div(
-                                            "PREPARANDO MOSAICO…",
-                                            id="mosaic-status",
-                                            className="status-line",
-                                        ),
-                                        html.Button(
-                                            "MOSTRAR OCULTAS",
-                                            id="show-hidden",
-                                            n_clicks=0,
-                                            disabled=True,
-                                            className="text-button",
-                                        ),
-                                    ],
-                                    className="mosaic-row",
-                                ),
-                                html.Div(
-                                    [
-                                        dcc.Input(
-                                            id="frame-id",
-                                            value=DEFAULT_FRAME_ID,
-                                            type="text",
-                                            className="frame-input",
-                                            debounce=True,
-                                            inputMode="numeric",
-                                        ),
-                                        html.Button(
-                                            "Cargar ↗",
-                                            id="load-frame",
-                                            n_clicks=0,
-                                            className="load-button",
-                                        ),
-                                    ],
-                                    className="control-row",
-                                ),
-                                html.Div(
-                                    "CONECTANDO CON EL ARCHIVO LPI…",
-                                    id="status",
-                                    className="status-line",
-                                ),
-                            ],
-                            className="source-block",
-                        ),
-                        html.Div(
-                            [
-                                html.Div(
-                                    html.Img(
-                                        id="preview",
-                                        className="preview-image",
-                                        alt="Vista previa del fotograma Lunar Orbiter",
+def language_from_search(search: str | None) -> str:
+    """Read ``?lang=`` from a URL query string, falling back to the config."""
+    requested = parse_qs((search or "").lstrip("?")).get("lang", [None])[0]
+    return normalize_language(requested, CONFIG.language)
+
+
+def _language_switch(lang: str) -> html.Nav:
+    return html.Nav(
+        [
+            html.A(
+                code.upper(),
+                href=f"?lang={code}",
+                className="lang-link lang-link--active"
+                if code == lang
+                else "lang-link",
+                lang=code,
+            )
+            for code in LANGUAGES
+        ],
+        className="lang-switch",
+        **{"aria-label": "Language / Idioma"},
+    )
+
+
+def _atlas(lang: str) -> html.Main:
+    return html.Main(
+        [
+            html.Section(
+                [
+                    html.Div(t(lang, "globe_label"), className="globe-label"),
+                    dcc.Graph(
+                        id="globe",
+                        figure=make_globe(),
+                        className="globe-render",
+                        config={"displayModeBar": False, "responsive": True},
+                    ),
+                    html.Div(t(lang, "globe_note"), className="globe-coordinates"),
+                ],
+                className="globe-panel",
+            ),
+            html.Aside(
+                [
+                    html.Div(
+                        [
+                            html.Div(
+                                t(lang, "archive_kicker"), className="section-kicker"
+                            ),
+                            html.H2(t(lang, "frame_heading"), className="side-heading"),
+                        ],
+                        className="source-block",
+                    ),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    dcc.Dropdown(
+                                        id="mission-select",
+                                        options=[
+                                            {
+                                                "label": f"Lunar Orbiter {number}",
+                                                "value": number,
+                                            }
+                                            for number in range(1, MISSIONS_NUM + 1)
+                                        ],
+                                        value=DEFAULT_MISSION,
+                                        placeholder=t(lang, "mission_placeholder"),
+                                        clearable=False,
+                                        searchable=False,
                                     ),
-                                    className="preview-frame",
+                                    dcc.Dropdown(
+                                        id="frame-select",
+                                        options=[],
+                                        placeholder=t(lang, "frame_placeholder"),
+                                        disabled=True,
+                                    ),
+                                ],
+                                className="selector-row",
+                            ),
+                            html.Div(
+                                [
+                                    html.Div(
+                                        t(lang, "mosaic_preparing"),
+                                        id="mosaic-status",
+                                        className="status-line",
+                                    ),
+                                    html.Button(
+                                        t(lang, "show_hidden", count=0),
+                                        id="show-hidden",
+                                        n_clicks=0,
+                                        disabled=True,
+                                        className="text-button",
+                                    ),
+                                ],
+                                className="mosaic-row",
+                            ),
+                            html.Div(
+                                [
+                                    dcc.Input(
+                                        id="frame-id",
+                                        value=DEFAULT_FRAME_ID,
+                                        type="text",
+                                        className="frame-input",
+                                        debounce=True,
+                                        inputMode="numeric",
+                                    ),
+                                    html.Button(
+                                        t(lang, "load_button"),
+                                        id="load-frame",
+                                        n_clicks=0,
+                                        className="load-button",
+                                    ),
+                                ],
+                                className="control-row",
+                            ),
+                            html.Div(
+                                t(lang, "connecting"),
+                                id="status",
+                                className="status-line",
+                            ),
+                        ],
+                        className="source-block",
+                    ),
+                    html.Div(
+                        [
+                            html.Div(
+                                html.Img(
+                                    id="preview",
+                                    className="preview-image",
+                                    alt=t(lang, "preview_alt"),
                                 ),
-                                html.Div(
-                                    [
-                                        html.Span("VISTA PREVIA LPI"),
-                                        html.Span("JPG · ORIGINAL ONLINE"),
-                                    ],
-                                    className="frame-caption",
-                                ),
-                            ],
-                            className="source-block",
-                        ),
-                        html.Div(
-                            [_metadata_row("FOTOGRAMA", DEFAULT_FRAME_ID)],
-                            id="metadata",
-                            className="metadata source-block",
-                        ),
-                        html.A(
-                            "ABRIR REGISTRO ORIGINAL ↗",
-                            id="image-link",
-                            href=frame_url(DEFAULT_FRAME_ID),
-                            target="_blank",
-                            rel="noreferrer",
-                            className="source-link source-block",
-                        ),
-                    ],
-                    className="side-panel",
-                ),
-            ],
-            className="atlas-layout",
-        ),
-        html.Footer(
-            [
-                html.Span(
-                    "FUENTE DE IMAGEN Y METADATOS: LUNAR AND PLANETARY INSTITUTE"
-                ),
-                html.Span("LAS IMÁGENES PERTENECEN A SUS RESPECTIVOS TITULARES"),
-            ],
-            className="footbar",
-        ),
-    ],
-    className="app-shell",
+                                className="preview-frame",
+                            ),
+                            html.Div(
+                                [
+                                    html.Span(t(lang, "preview_caption")),
+                                    html.Span(t(lang, "preview_format")),
+                                ],
+                                className="frame-caption",
+                            ),
+                        ],
+                        className="source-block",
+                    ),
+                    html.Div(
+                        [_metadata_row(t(lang, "meta_frame"), DEFAULT_FRAME_ID)],
+                        id="metadata",
+                        className="metadata source-block",
+                    ),
+                    html.A(
+                        t(lang, "open_record"),
+                        id="image-link",
+                        href=frame_url(DEFAULT_FRAME_ID),
+                        target="_blank",
+                        rel="noreferrer",
+                        className="source-link source-block",
+                    ),
+                ],
+                className="side-panel",
+            ),
+        ],
+        className="atlas-layout",
+    )
+
+
+def serve_layout(lang: str) -> html.Div:
+    """Build the page in one language; switching reloads with ``?lang=``."""
+    tab_classes = {"className": "tab", "selected_className": "tab--selected"}
+    return html.Div(
+        [
+            dcc.Store(id="lang", data=lang),
+            dcc.Interval(
+                id="initial-load", interval=500, n_intervals=0, max_intervals=1
+            ),
+            dcc.Interval(id="mosaic-poll", interval=1000, disabled=True),
+            dcc.Store(id="selected-frame"),
+            dcc.Store(id="hidden-frames", data=[]),
+            dcc.Store(id="mosaic-count", data=0),
+            html.Header(
+                [
+                    html.Div(
+                        [
+                            html.Div("LO", className="brand-mark"),
+                            html.Div(
+                                ["LUNAR ORBITER", html.Br(), t(lang, "brand_subtitle")],
+                                className="brand-copy",
+                            ),
+                        ],
+                        className="wordmark",
+                    ),
+                    html.Div(
+                        [
+                            html.Div(t(lang, "top_meta"), className="top-meta"),
+                            _language_switch(lang),
+                        ],
+                        className="topbar-end",
+                    ),
+                ],
+                className="topbar",
+            ),
+            html.Section(
+                [
+                    html.Div(
+                        [
+                            html.Div(t(lang, "eyebrow"), className="eyebrow"),
+                            html.H1(t(lang, "title")),
+                        ]
+                    ),
+                    html.Div(t(lang, "title_note"), className="title-note"),
+                ],
+                className="page-title",
+            ),
+            dcc.Tabs(
+                id="tabs",
+                value="atlas",
+                className="tabs",
+                children=[
+                    dcc.Tab(
+                        label=t(lang, "tab_atlas"),
+                        value="atlas",
+                        children=_atlas(lang),
+                        **tab_classes,
+                    ),
+                    dcc.Tab(
+                        label=t(lang, "tab_moon"),
+                        value="moon",
+                        children=moon_tab(lang),
+                        **tab_classes,
+                    ),
+                    dcc.Tab(
+                        label=t(lang, "tab_program"),
+                        value="program",
+                        children=program_tab(lang),
+                        **tab_classes,
+                    ),
+                ],
+            ),
+            html.Footer(
+                [
+                    html.Span(t(lang, "footer_source")),
+                    html.Span(t(lang, "footer_rights")),
+                ],
+                className="footbar",
+            ),
+        ],
+        className="app-shell",
+        lang=lang,
+    )
+
+
+app.layout = html.Div([dcc.Location(id="url"), html.Div(id="page")])
+app.validation_layout = html.Div(
+    [dcc.Location(id="url"), html.Div(id="page"), serve_layout(CONFIG.language)]
 )
+
+
+@app.callback(Output("page", "children"), Input("url", "search"))
+def render_page(search: str | None):
+    return serve_layout(language_from_search(search))
 
 
 @app.callback(
@@ -311,24 +387,27 @@ app.layout = html.Div(
     Input("load-frame", "n_clicks"),
     Input("initial-load", "n_intervals"),
     Input("frame-id", "value"),
+    State("lang", "data"),
     prevent_initial_call=True,
 )
-def update_frame(_clicks: int, _interval: int, frame_id: str):
+def update_frame(_clicks: int, _interval: int, frame_id: str, lang: str = "es"):
     unchanged = (no_update,) * 4
     try:
         frame = fetch_frame(frame_id)
     # RequestException subclasses OSError, so it must be handled first.
     except requests.RequestException as error:
-        return *unchanged, f"ERROR DE CONEXIÓN · {error}"
+        return *unchanged, t(lang, "status_connection_error", error=error)
     except (ValueError, OSError, RuntimeError) as error:
-        return *unchanged, f"NO SE PUDO CARGAR · {error}"
+        return *unchanged, t(
+            lang, "status_load_error", error=describe_error(lang, error)
+        )
 
     image_data = base64.b64encode(frame.image_bytes).decode("ascii")
-    status = f"LPI EN LÍNEA · {frame.frame_id} · VISTA PREVIA RECIBIDA"
+    status = t(lang, "status_frame_loaded", frame_id=frame.frame_id)
     return (
         frame.frame_id,
         f"data:image/jpeg;base64,{image_data}",
-        metadata_rows(frame),
+        metadata_rows(frame, lang),
         frame_url(frame.frame_id),
         status,
     )
@@ -370,17 +449,20 @@ def render_globe(
     Output("mosaic-count", "data"),
     Output("hidden-frames", "data", allow_duplicate=True),
     Input("mission-select", "value"),
+    State("lang", "data"),
     prevent_initial_call="initial_duplicate",
 )
-def list_mission_frames(mission: int):
+def list_mission_frames(mission: int, lang: str = "es"):
     try:
         frame_ids = fetch_mission_frames(mission)
     except requests.RequestException as error:
-        return [], None, True, f"ERROR DE CONEXIÓN · {error}", True, 0, []
+        status = t(lang, "status_connection_error", error=error)
+        return [], None, True, status, True, 0, []
     except ValueError as error:
-        return [], None, True, f"NO SE PUDO CARGAR · {error}", True, 0, []
+        status = t(lang, "status_load_error", error=describe_error(lang, error))
+        return [], None, True, status, True, 0, []
     LOADER.start(mission)
-    status = f"MISIÓN {mission} · {len(frame_ids)} FOTOGRAMAS"
+    status = t(lang, "status_mission_frames", mission=mission, count=len(frame_ids))
     return frame_ids, None, False, status, False, 0, []
 
 
@@ -391,21 +473,25 @@ def list_mission_frames(mission: int):
     Input("mosaic-poll", "n_intervals"),
     State("mission-select", "value"),
     State("mosaic-count", "data"),
+    State("lang", "data"),
     prevent_initial_call=True,
 )
-def poll_mosaic(_intervals: int, mission: int | None, rendered: int):
+def poll_mosaic(_intervals: int, mission: int | None, rendered: int, lang="es"):
     if not mission:
         return no_update, no_update, True
     progress = LOADER.progress(mission)
     loaded = len(progress.tiles)
     if progress.error:
-        return f"MOSAICO NO DISPONIBLE · {progress.error}", no_update, True
+        error = describe_error(lang, progress.error)
+        return t(lang, "mosaic_unavailable", error=error), no_update, True
     if progress.finished:
-        failed = f" · {progress.failed} SIN DATOS" if progress.failed else ""
+        failed = (
+            t(lang, "mosaic_failed", count=progress.failed) if progress.failed else ""
+        )
         count = loaded if loaded != rendered else no_update
-        return f"MOSAICO · {loaded} FOTOS EN LA ESFERA{failed}", count, True
+        return t(lang, "mosaic_done", count=loaded, failed=failed), count, True
 
-    status = f"DESCARGANDO MOSAICO · {loaded}/{progress.total or '…'}"
+    status = t(lang, "mosaic_loading", loaded=loaded, total=progress.total or "…")
     count = loaded if loaded - rendered >= MOSAIC_RENDER_STEP else no_update
     return status, count, False
 
@@ -445,10 +531,11 @@ def hide_clicked_image(
     Output("show-hidden", "children"),
     Output("show-hidden", "disabled"),
     Input("hidden-frames", "data"),
+    State("lang", "data"),
 )
-def describe_hidden(hidden: list[str] | None):
+def describe_hidden(hidden: list[str] | None, lang: str = "es"):
     count = len(hidden or ())
-    return f"MOSTRAR OCULTAS ({count})", count == 0
+    return t(lang, "show_hidden", count=count), count == 0
 
 
 @app.callback(
@@ -474,5 +561,11 @@ def select_frame(frame_id: str | None, hidden: list[str] | None):
     return frame_id, [value for value in hidden or () if value != frame_id]
 
 
+def main() -> None:
+    """Run the viewer on the host and port from ``config.json``."""
+    print(f"Lunar Orbiter viewer: {CONFIG.url}")
+    app.run(host=CONFIG.host, port=CONFIG.port, debug=False)
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=8050, debug=False)
+    main()

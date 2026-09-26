@@ -113,7 +113,7 @@ def test_mission_loader_reports_listing_error_and_allows_retry(store, monkeypatc
     monkeypatch.setattr("orbiter.catalog.fetch_mission_frames", fail)
     loader = MissionLoader(store)
     loader.start(2)
-    assert _wait_until_finished(loader, 2).error == "sin red"
+    assert str(_wait_until_finished(loader, 2).error) == "sin red"
 
     monkeypatch.setattr("orbiter.catalog.fetch_mission_frames", lambda m: ["2001"])
     loader.start(2)

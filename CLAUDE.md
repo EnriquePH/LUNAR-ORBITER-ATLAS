@@ -1,59 +1,69 @@
 # CLAUDE.md
 
-Visor local (Dash) de fotogramas del archivo Lunar Orbiter del LPI
-(<https://www.lpi.usra.edu/resources/lunarorbiter/>) proyectados sobre una esfera
-lunar 3D.
+Lunar Orbiter Atlas: visor local (Dash) de las fotos del archivo Lunar Orbiter del LPI
+(<https://www.lpi.usra.edu/resources/lunarorbiter/>) sobre una esfera lunar 3D, con
+pestañas de datos de la Luna y del programa, en español e inglés.
+Repo: <https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS> · Licencia MIT, © ENERGYCODE.
+Tareas pendientes y hechas: [PLAN.md](PLAN.md).
 
 ## Comandos
 
-Usa siempre el entorno `.venv` (Python 3.14; el proyecto declara >=3.10):
+Usa el `Makefile` (envuelve `.venv`, Python 3.14 local; el proyecto declara >=3.10):
 
 ```bash
-.venv/bin/python -m pip install -e ".[dev]"   # instalar
-.venv/bin/python -m orbiter.app               # app en http://127.0.0.1:8050
-.venv/bin/pytest                              # tests
-.venv/bin/ruff check .                        # lint
-.venv/bin/ruff format .                       # formato (obligatorio antes de commit)
+make install   # .venv + pip install -e ".[dev]"
+make run       # scripts/run.sh: arranca en host/puerto de config.json (8050)
+make check     # ruff check + ruff format --check + pytest (lo mismo que la CI)
+make format    # ruff --fix + ruff format (obligatorio antes de commit)
 ```
 
 ## Estructura
 
-- `orbiter/urls.py` — constantes y constructores de URL del LPI (`mission_url`, `frame_url`).
-- `orbiter/lpi.py` — cliente HTTP + parser HTML (BeautifulSoup + regex sobre el texto).
-  `fetch_frame` valida el ID y delega en `_fetch_frame_cached` (`lru_cache(16)`).
-  Devuelve el dataclass inmutable `OrbiterFrame`; los campos de nave e iluminación
-  (`_OPTIONAL_FIELDS`) son opcionales y quedan en `None` si la página no los trae.
-  `fetch_mission_frames` lista los IDs de una misión (`lru_cache`, 1–5).
-- `orbiter/app.py` — app Dash: layout y tres callbacks:
-  `list_mission_frames` (misión → opciones), `select_frame` (opción → input `frame-id`)
-  y `update_frame` (5 salidas; se dispara con el botón, con Intro en el input o al
-  elegir fotograma). `make_globe` devuelve una `go.Figure` de Plotly: esfera base +
-  parche `go.Surface` con la textura del fotograma (`surfacecolor`) + marcador, con la
-  cámara centrada en el punto principal. La rotación es en el navegador. El parche es
-  esquemático (`PATCH_WIDTH_DEGREES` fijo), no un mosaico cartográfico.
-- `orbiter/assets/style.css` — todo el CSS (Dash sirve `assets/` automáticamente; se
-  incluye en el paquete vía `package-data`). Los desplegables de Dash 4 se tematizan
-  con variables `--Dash-*` en `.side-panel`; el menú abierto (`.dash-dropdown-content`)
-  se renderiza en un portal fuera de ese contenedor.
-- `tests/` — pytest; la red se simula con `monkeypatch` sobre `orbiter.lpi.requests.get`
-  (o sobre `orbiter.app.fetch_*` en los tests de callbacks, que se llaman directamente).
-- `LUNAR ORBITER.ipynb` — cuaderno exploratorio original (2020). Excluido de Ruff; no
-  modificar salvo petición expresa.
+- `config.json` + `orbiter/config.py` — `host`, `port` (8050) e idioma por defecto;
+  `load_config()` valida y rechaza claves desconocidas. `ORBITER_CONFIG` cambia el archivo.
+- `orbiter/app.py` — Dash. `app.layout` es solo `dcc.Location` + `#page`; el callback
+  `render_page` monta `serve_layout(lang)` según `?lang=` (el layout no puede leer la
+  query: Dash lo pide por `/_dash-layout`). Por eso `suppress_callback_exceptions=True`
+  y `app.validation_layout`. El idioma viaja en `dcc.Store("lang")` como `State`.
+  Callbacks: `update_frame` (5 salidas), `render_globe`, `list_mission_frames` (arranca
+  el `LOADER`), `poll_mosaic` (Interval), `hide_clicked_image`, `show_hidden`,
+  `describe_hidden`, `select_frame`. Se prueban llamándolos directamente.
+- `orbiter/globe.py` — figura Plotly: esfera base, **todas las teselas en un único
+  `Mesh3d`** (200 `Surface` congelan el navegador), foto seleccionada como `Surface` a
+  más resolución, marcador, ecuador y polos N/S (`hoverinfo="skip"` para que no roben
+  clicks). Tamaño de cada foto según la altitud de la nave (`patch_width_degrees`).
+  El click se resuelve por geometría (`image_at`), no por índices de traza.
+- `orbiter/catalog.py` — `MissionLoader` descarga en hilos todas las fotos de una
+  misión; `TileStore` cachea página+miniatura en `data/lpi/` (escritura atómica),
+  3 workers con un límite compartido de 4 peticiones/s.
+- `orbiter/lpi.py` — cliente y parser del LPI. Errores como `LpiError(key, **params)`
+  que la app traduce con `describe_error`.
+- `orbiter/i18n.py` — todos los textos de la UI en `TEXTS["es"|"en"]`; `t(lang, key)`.
+- `orbiter/reference.py` — pestañas «La Luna» y «Programa Lunar Orbiter»
+  (`CONTENT["es"|"en"]`), texto CC BY-SA 4.0 resumido de Wikipedia.
+- `orbiter/assets/style.css` — todo el CSS. Desplegables de Dash 4 tematizados con
+  variables `--Dash-*`; su menú abierto va en un portal fuera de `.side-panel`.
+- `scripts/run.sh` — crea `.venv` si falta y para una instancia previa del visor
+  que ocupe el puerto (nunca otros programas).
+- `.github/workflows/ci.yml` — ruff + pytest con Python 3.10 y 3.14.
 
 ## Convenciones
 
 - **No borrar archivos**: muévelos a `draft/` (ignorada por git) conservando su ruta
   relativa, p. ej. `mkdir -p draft/orbiter && mv orbiter/x.py draft/orbiter/`.
-- Textos de UI, mensajes de error y README en **español**; identificadores y docstrings en inglés.
-- Los tests nunca deben hacer peticiones reales al LPI. Las cachés `lru_cache` de
-  `lpi.py` se limpian en un fixture `autouse` de `tests/conftest.py`; si añades otra
-  caché, límpiala ahí también.
-- No guardar imágenes descargadas en el repo (`/data/` y `/outputs/` están en `.gitignore`).
-  La licencia MIT cubre solo el código, no el material del LPI.
-- Sé conservador con peticiones al LPI (caché, timeouts, un fotograma por acción).
-- Ruff: `line-length = 88` con `E501` activo y `ruff format`; reglas en `pyproject.toml`.
-- Dependencias: las del cuaderno (jupyter, pandas, tqdm) van en el extra `notebook`, no en el paquete.
-- Un callback de Dash con N `Output` debe devolver siempre N valores (también en ramas de error).
-- Para comprobar la UI: `chromium-browser --headless` (snap: no escribe en `/tmp`, usa
-  `outputs/`). Al parar la app, mata el PID concreto: `pkill -f orbiter.app` también mata
-  el propio shell y deja servidores viejos ocupando el puerto 8050.
+- **Idiomas**: la UI es bilingüe; ningún texto visible va escrito en el código, todo
+  pasa por `t()` con la misma clave en `es` y `en` (lo comprueba `tests/test_i18n.py`).
+  README en **inglés**. Identificadores y docstrings en inglés.
+- Los tests nunca hacen peticiones reales al LPI. Las `lru_cache` de `lpi.py` se
+  limpian en el fixture `autouse` de `tests/conftest.py`; el `LOADER` de la app se
+  sustituye por un `FakeLoader`.
+- Sé conservador con el LPI: caché en disco, timeouts, límite de peticiones.
+  El User-Agent lleva la web de ENERGYCODE, no emails.
+- No subir descargas: `/data/`, `/outputs/` y `/draft/` están en `.gitignore`.
+  MIT cubre solo el código; imágenes del LPI y texto de Wikipedia tienen su licencia.
+- Ruff: `line-length = 88` con `E501` y `ruff format`.
+- Un callback con N `Output` devuelve siempre N valores, también en ramas de error.
+- Comprobar la UI: `chromium-browser --headless --remote-debugging-port=9333` (snap:
+  no escribe en `/tmp`, usa `outputs/`). Para parar la app usa `make run` (para la
+  anterior) o `pgrep -f "python -m orbiter[.]app"`: con `pkill -f orbiter.app` el
+  patrón coincide con el propio shell y lo mata.

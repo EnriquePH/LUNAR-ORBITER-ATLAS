@@ -121,7 +121,7 @@ class MissionProgress:
     total: int = 0
     failed: int = 0
     finished: bool = False
-    error: str | None = None
+    error: Exception | None = None
     tiles: dict[str, GlobeImage] = field(default_factory=dict)
 
 
@@ -161,7 +161,7 @@ class MissionLoader:
             frame_ids = fetch_mission_frames(mission)
         except (requests.RequestException, ValueError) as error:
             with self._lock:
-                progress.error = str(error)
+                progress.error = error
                 progress.finished = True
             return
 

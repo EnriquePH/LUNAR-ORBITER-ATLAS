@@ -5,11 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lunar-orbiter"
 version = "0.1.0"
-description = "Utilities for exploring data from the Lunar Orbiter archive"
+description = "Interactive 3D atlas of Lunar Orbiter photographs from the LPI archive"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
+authors = [{ name = "ENERGYCODE", email = "energycode.org@gmail.com" }]
+maintainers = [{ name = "ENERGYCODE", email = "energycode.org@gmail.com" }]
 dependencies = [
     "beautifulsoup4>=4.12",
     "dash>=4.0",
@@ -19,14 +21,15 @@ dependencies = [
     "requests>=2.31",
 ]
 
+[project.scripts]
+lunar-orbiter = "orbiter.app:main"
+
+[project.urls]
+Homepage = "https://www.energycode.org/"
+Repository = "https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS"
+
 [project.optional-dependencies]
-notebook = [
-    "jupyter>=1.0",
-    "pandas>=2.1",
-    "tqdm>=4.66",
-]
 dev = [
-    "lunar-orbiter[notebook]",
     "pytest>=8.0",
     "ruff>=0.5",
 ]
@@ -43,7 +46,6 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py310"
 line-length = 88
-extend-exclude = ["LUNAR ORBITER.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "FURB", "C4"]
