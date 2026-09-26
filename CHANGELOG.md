@@ -17,15 +17,12 @@ First release.
   with the horizon, high-altitude frames turned to match their black sky.
 - Frame IDs labelled at the centre of each photo, with the selected one in
   orange; a **Labels** switch hides them and is remembered.
-- Rotation and zoom slow down near the surface, and the camera can come down
-  to about 17 km above it, so photos stay easy to pick up close. The view
-  stays put when switching tabs.
-- Clicking selects exactly the photo named in the hover label, also where
-  photos overlap.
-- The logo opens the project page and a **GitHub** link the repository.
 - Click a photo, pick one from the selector, type its ID or press **Random**
-  to show it in the side panel. A click leaves the view as it is; the other
+  to show it in the side panel. A click selects the photo named in the hover
+  label, even where photos overlap, and leaves the view as it is; the other
   ways turn the globe to the photo and keep the zoom.
+- Rotation and zoom slow down near the surface, and the camera can come down
+  to about 17 km above it. The view stays put when switching tabs.
 - Side panel: LPI preview, principal point, spacecraft position and altitude,
   illumination angles, camera, ground footprint in km, and a check of the
   LPI's emission angle against the one implied by the spacecraft position.
@@ -37,6 +34,7 @@ First release.
 
 - English and Spanish, switched with **ES | EN** or `?lang=`, and remembered
   in the browser.
+- The logo opens the project page and a **GitHub** link the repository.
 - Reference tabs on the Moon and the Lunar Orbiter program, summarised from
   Wikipedia (CC BY-SA 4.0).
 - DM Mono throughout, brand icon and favicons; works on phone-sized screens.

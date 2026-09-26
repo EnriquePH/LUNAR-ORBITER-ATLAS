@@ -20,12 +20,15 @@ Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
 ## Features
 
 - **Mission mosaic** — every frame of the selected mission is projected onto
-  the part of the Moon it photographed. Click a photo to show its details in
-  the side panel without moving the view, or press **Random** to turn to any
-  frame of the mission.
-  Each photo is labelled with its frame ID; the selected one turns orange,
-  and the **Labels** switch above the globe hides them.
-  Rotation slows down as you zoom in, so photos stay easy to pick up close.
+  the part of the Moon it photographed, labelled with its frame ID (the
+  **Labels** switch above the globe hides the IDs).
+- **Picking photos** — click a photo to show it in the side panel: it is the
+  one named in the hover label, the view stays where it is and its label
+  turns orange. The frame selector, a typed ID or **Random** turn the globe
+  to the photo and keep the zoom.
+- **Close-up navigation** — rotation and zoom slow down near the surface, and
+  the camera can come down to about 17 km above it. The view is kept when you
+  switch tabs.
 - **Frame details** — LPI preview, principal point, spacecraft altitude and
   position, illumination angles (sun azimuth, incidence, emission, phase),
   camera (80 mm or 610 mm), ground footprint in km, and a geometry check: the
@@ -35,7 +38,8 @@ Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
 - **Reference tabs** — summarised facts about the Moon and the Lunar Orbiter
   program, with their Wikipedia sources.
 - **English and Spanish** — switch with the **ES | EN** control in the top bar
-  (or open `?lang=en` / `?lang=es`).
+  (or open `?lang=en` / `?lang=es`). The logo opens the project page and
+  **GitHub** this repository.
 - Equator and north/south poles are marked on the globe; frames taken above
   1000 km are outlined and flagged in the side panel.
 

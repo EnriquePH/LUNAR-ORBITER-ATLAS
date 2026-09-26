@@ -77,10 +77,12 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   (`CONTENT["es"|"en"]`), texto CC BY-SA 4.0 resumido de Wikipedia.
 - `orbiter/assets/rotation.js` — antes de que Plotly procese un click o la rueda
   en el globo, escala `rotateSpeed` y `zoomSpeed` con la altura sobre la
-  superficie, limita el zoom a 1,01 radios (`view.setDistanceLimits`) y acerca el
-  plano de recorte (`glplot.zNear`). Radio en unidades de cámara =
-  `aspectratio / rango del eje` (0,4), no `dataScale`. Usa
-  internos de Plotly (`_fullLayout.scene._scene`): revísalo si se actualiza.
+  superficie, limita el zoom a 1,01 radios (`view.setDistanceLimits`) y ajusta el
+  plano de recorte (`glplot.zNear`) al 15 % de la altura (0,01 de lejos, como
+  Plotly: más cerca pierde precisión de profundidad y las teselas parpadean).
+  Radio en unidades de cámara = `aspectratio / rango del eje` (0,4), no
+  `dataScale`. Usa internos de Plotly (`_fullLayout.scene._scene`): revísalo si
+  se actualiza.
 - `orbiter/assets/style.css` — todo el CSS. **Única fuente: DM Mono** (pesos 300–500,
   sin 600/700), también en la figura de Plotly. Desplegables de Dash 4 tematizados con
   variables `--Dash-*`; su menú abierto va en un portal fuera de `.side-panel`.

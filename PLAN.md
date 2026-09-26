@@ -97,6 +97,9 @@
 - [x] El click selecciona la foto del hover (`customdata` del mosaico como lista:
       Dash lo relee de la figura por índice y fallaba con el array binario).
 - [x] Logo de la app enlazado a la web del proyecto y enlace «GITHUB ↗» al repo.
+- [x] Revisión previa a la release: plano de recorte adaptativo (0,01 de lejos,
+      como Plotly, para no perder precisión de profundidad), README y CHANGELOG
+      reordenados, capturas de la web con el enlace a GitHub.
 - [x] Release 1.0.0: versión en `pyproject.toml`, `CITATION.cff`, README y
       User-Agent; `CHANGELOG.md`; capturas de la web regeneradas; tag `v1.0.0`.
 
