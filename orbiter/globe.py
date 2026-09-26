@@ -977,15 +977,47 @@ def _reference_marks() -> list[go.Scatter3d]:
     return [equator, poles]
 
 
-def _camera_eye(latitude: float, longitude: float) -> dict[str, float]:
+def _camera_eye(
+    latitude: float, longitude: float, distance: float = CAMERA_DISTANCE
+) -> dict[str, float]:
     x_coordinate, y_coordinate, z_coordinate = selenographic_to_cartesian(
-        latitude, longitude, CAMERA_DISTANCE
+        latitude, longitude, distance
     )
     return {
         "x": float(x_coordinate),
         "y": float(y_coordinate),
         "z": float(z_coordinate),
     }
+
+
+def focus_camera(
+    latitude: float, longitude: float, distance: float = CAMERA_DISTANCE
+) -> dict[str, dict[str, float]]:
+    """Plotly scene camera looking at a point, north up.
+
+    Args:
+        latitude: Latitude of the point to face, in degrees.
+        longitude: Longitude of the point to face, in degrees.
+        distance: Eye distance from the centre, in Plotly eye units (the
+            starting view is ``CAMERA_DISTANCE``); keeps the current zoom.
+
+    Returns:
+        A ``scene.camera`` dict with ``eye``, ``center`` and ``up``.
+    """
+    return {
+        "eye": _camera_eye(latitude, longitude, distance),
+        "center": {"x": 0.0, "y": 0.0, "z": 0.0},
+        "up": {"x": 0.0, "y": 0.0, "z": 1.0},
+    }
+
+
+def camera_distance(camera: dict | None) -> float | None:
+    """Eye distance of a Plotly ``scene.camera`` dict, or ``None`` if unusable."""
+    try:
+        eye = camera["eye"]
+        return math.sqrt(sum(float(eye[axis]) ** 2 for axis in ("x", "y", "z")))
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def visible_images(
@@ -1010,14 +1042,22 @@ def make_globe(
     tiles: Iterable[GlobeImage] = (),
     hidden: Collection[str] = (),
     show_labels: bool = True,
+    camera: dict | None = None,
 ) -> go.Figure:
     """Build the globe with every visible tile and the selected frame on top.
 
     With ``show_labels``, each photo carries its frame ID at its centre and
     the selection's label is drawn in the accent colour above its marker.
 
-    The camera centres on the selection; ``uirevision`` keeps the user's own
-    rotation while tiles are added or hidden for the same selection.
+    Args:
+        selected: The frame shown in the side panel, drawn on top.
+        tiles: The mission's photos.
+        hidden: Frame IDs not to draw.
+        show_labels: Whether to label each photo with its frame ID.
+        camera: Plotly ``scene.camera`` to use, e.g. the user's current view;
+            by default the camera faces the selection (or the first tile) from
+            ``CAMERA_DISTANCE``. ``uirevision`` stays constant, so the view
+            only moves when this camera changes.
     """
     tiles = sorted(tiles, key=lambda tile: tile.frame_id)
     images = visible_images(selected, tiles, hidden)
@@ -1036,11 +1076,13 @@ def make_globe(
     traces += _reference_marks()
     if selected is not None:
         traces.append(_marker(selected))
-        eye = _camera_eye(selected.latitude, selected.longitude)
-    elif tiles:
-        eye = _camera_eye(tiles[0].latitude, tiles[0].longitude)
-    else:
-        eye = _camera_eye(22, 35)
+    if camera is None:
+        facing = selected or (tiles[0] if tiles else None)
+        camera = (
+            focus_camera(facing.latitude, facing.longitude)
+            if facing is not None
+            else focus_camera(22, 35)
+        )
 
     hidden_axis = {"visible": False, "range": [-AXIS_LIMIT, AXIS_LIMIT]}
     figure = go.Figure(traces)
@@ -1054,14 +1096,14 @@ def make_globe(
             "bordercolor": ACCENT,
             "font": {"family": "DM Mono, monospace", "color": "#e6e3dd", "size": 11},
         },
-        uirevision=selected.frame_id if selected else "globe",
+        uirevision="globe",
         scene={
             "xaxis": hidden_axis,
             "yaxis": hidden_axis,
             "zaxis": hidden_axis,
             "aspectmode": "cube",
             "bgcolor": "rgba(0,0,0,0)",
-            "camera": {"eye": eye, "up": {"x": 0, "y": 0, "z": 1}},
+            "camera": camera,
         },
     )
     return figure

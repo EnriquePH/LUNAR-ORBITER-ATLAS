@@ -18,8 +18,10 @@ from orbiter.globe import (
     GlobeImage,
     _patch_grid,
     _rolled,
+    camera_distance,
     camera_of,
     cartesian_to_selenographic,
+    focus_camera,
     footprint_outline,
     format_coordinates,
     frame_camera,
@@ -156,7 +158,7 @@ def test_make_globe_draws_tiles_selection_and_marker():
     assert int(np.max(mosaic.i)) < len(mosaic.x)
     assert selected.name == "1041"
     assert figure.data[-1].marker.color == ACCENT
-    assert figure.layout.uirevision == "1041"
+    assert figure.layout.uirevision == "globe"
 
 
 def test_make_globe_labels_each_photo_at_its_centre():
@@ -197,6 +199,21 @@ def test_make_globe_keeps_marker_for_hidden_selection():
         "surface",
         "scatter3d",
     ]
+
+
+def test_make_globe_uses_the_given_camera():
+    camera = focus_camera(0, 90, 0.7)
+
+    figure = make_globe(_image(), camera=camera)
+
+    eye = figure.layout.scene.camera.eye
+    assert (eye.x, eye.y, eye.z) == pytest.approx((0, 0.7, 0), abs=1e-12)
+
+
+def test_camera_distance_reads_the_eye_or_gives_none():
+    assert camera_distance(focus_camera(10, 20, 1.3)) == pytest.approx(1.3)
+    assert camera_distance({"up": {}}) is None
+    assert camera_distance(None) is None
 
 
 def test_make_globe_centres_camera_on_selection():

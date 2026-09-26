@@ -21,7 +21,8 @@ Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
 
 - **Mission mosaic** — every frame of the selected mission is projected onto
   the part of the Moon it photographed. Click a photo to show its details in
-  the side panel, or press **Random** to jump to any frame of the mission.
+  the side panel without moving the view, or press **Random** to turn to any
+  frame of the mission.
   Each photo is labelled with its frame ID; the selected one turns orange,
   and the **Labels** switch above the globe hides them.
   Rotation slows down as you zoom in, so photos stay easy to pick up close.

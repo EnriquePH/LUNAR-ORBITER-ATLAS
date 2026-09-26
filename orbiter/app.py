@@ -20,7 +20,9 @@ from orbiter.globe import (
     HIGH_ALTITUDE_KM,
     FrameGeometry,
     GlobeImage,
+    camera_distance,
     camera_of,
+    focus_camera,
     format_coordinates,
     frame_geometry,
     image_at,
@@ -423,6 +425,11 @@ def serve_layout(lang: str) -> html.Div:
             ),
             dcc.Interval(id="mosaic-poll", interval=1000, disabled=True),
             dcc.Store(id="selected-frame"),
+            # The user's current view, the photo last clicked on the globe and
+            # the selection the view last turned to (see render_globe).
+            dcc.Store(id="globe-camera"),
+            dcc.Store(id="clicked-frame"),
+            dcc.Store(id="focused-frame"),
             dcc.Store(id="mosaic-count", data=0),
             html.Header(
                 [
@@ -610,26 +617,74 @@ def _selected_image(frame_id: str | None) -> GlobeImage | None:
 
 @app.callback(
     Output("globe", "figure"),
+    Output("focused-frame", "data"),
+    Output("globe-camera", "data", allow_duplicate=True),
+    Output("clicked-frame", "data", allow_duplicate=True),
     Input("selected-frame", "data"),
     Input("mosaic-count", "data"),
     Input("mission-select", "value"),
     Input("show-labels", "value"),
+    State("globe-camera", "data"),
+    State("clicked-frame", "data"),
+    State("focused-frame", "data"),
+    prevent_initial_call="initial_duplicate",
 )
 def render_globe(
     selected_id: str | None,
     _mosaic_count: int,
     mission: int | None,
     show_labels: list[str] | None = ("on",),
+    current_camera: dict | None = None,
+    clicked_id: str | None = None,
+    focused_id: str | None = None,
 ):
     """Redraw the globe with the mission's loaded tiles and the selection.
 
-    ``show_labels`` is the labels checklist value: frame IDs are drawn when it
-    contains ``"on"``.
+    The view stays where the user left it. Only a new selection that did not
+    come from a click on the globe (selector, typed ID, random) turns the view
+    to face the photo, keeping the zoom.
+
+    Args:
+        selected_id: The frame in the side panel.
+        _mosaic_count: Tiles rendered so far; changes trigger a redraw.
+        mission: The selected mission.
+        show_labels: The labels checklist value; IDs are drawn when it
+            contains ``"on"``.
+        current_camera: The user's ``scene.camera`` (from ``globe-camera``).
+        clicked_id: The photo last clicked on the globe.
+        focused_id: The selection the view last turned to.
+
+    Returns:
+        The figure, the selection now faced, the camera used, and the cleared
+        click marker (``None``) once a new selection has been handled.
     """
     tiles = LOADER.progress(mission).tiles.values() if mission else ()
-    return make_globe(
-        _selected_image(selected_id), tiles, show_labels="on" in (show_labels or ())
+    selected = _selected_image(selected_id)
+    camera, clicked = current_camera, no_update
+    if selected is not None and selected_id != focused_id:
+        if selected_id != clicked_id and current_camera is not None:
+            distance = camera_distance(current_camera)
+            camera = focus_camera(
+                selected.latitude,
+                selected.longitude,
+                *([distance] if distance else []),
+            )
+        clicked = None
+    figure = make_globe(
+        selected, tiles, show_labels="on" in (show_labels or ()), camera=camera
     )
+    return figure, selected_id, figure.layout.scene.camera.to_plotly_json(), clicked
+
+
+@app.callback(
+    Output("globe-camera", "data"),
+    Input("globe", "relayoutData"),
+    prevent_initial_call=True,
+)
+def remember_camera(relayout: dict | None):
+    """Keep the view the user rotated or zoomed to."""
+    camera = (relayout or {}).get("scene.camera")
+    return camera if camera_distance(camera) else no_update
 
 
 @app.callback(
@@ -696,6 +751,7 @@ def poll_mosaic(_intervals: int, mission: int | None, rendered: int, lang="es"):
 
 @app.callback(
     Output("frame-id", "value", allow_duplicate=True),
+    Output("clicked-frame", "data"),
     Input("globe", "clickData"),
     State("selected-frame", "data"),
     State("mission-select", "value"),
@@ -704,19 +760,22 @@ def poll_mosaic(_intervals: int, mission: int | None, rendered: int, lang="es"):
 def select_clicked_image(
     click_data: dict | None, selected_id: str | None, mission: int | None
 ):
-    """Show the clicked photo's details in the side panel; it stays on the globe."""
+    """Show the clicked photo's details in the side panel; it stays on the globe.
+
+    Also records the photo as clicked, so the view does not move to it.
+    """
     if not click_data or not click_data.get("points"):
-        return no_update
+        return no_update, no_update
     point = click_data["points"][0]
     if not {"x", "y", "z"} <= point.keys():
-        return no_update
+        return no_update, no_update
 
     tiles = LOADER.progress(mission).tiles.values() if mission else ()
     images = visible_images(_selected_image(selected_id), tiles, ())
     clicked = image_at(images, point["x"], point["y"], point["z"])
     if clicked is None or clicked.frame_id == selected_id:
-        return no_update
-    return clicked.frame_id
+        return no_update, no_update
+    return clicked.frame_id, clicked.frame_id
 
 
 @app.callback(

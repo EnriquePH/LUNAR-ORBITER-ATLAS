@@ -20,7 +20,8 @@ First release.
 - Rotation slows down as you zoom in, and the zoom stops just above the
   surface, so photos stay easy to pick up close.
 - Click a photo, pick one from the selector, type its ID or press **Random**
-  to show it in the side panel.
+  to show it in the side panel. A click leaves the view as it is; the other
+  ways turn the globe to the photo and keep the zoom.
 - Side panel: LPI preview, principal point, spacecraft position and altitude,
   illumination angles, camera, ground footprint in km, and a check of the
   LPI's emission angle against the one implied by the spacecraft position.

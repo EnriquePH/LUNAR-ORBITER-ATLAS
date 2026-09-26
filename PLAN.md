@@ -87,6 +87,9 @@
 - [x] Giro más lento al acercarse (proporcional a la altura sobre la superficie)
       y zoom limitado justo encima de la Luna (`orbiter/assets/rotation.js`).
       Medido: el mismo arrastre de 100 px gira 22° de cerca antes y 0,8° ahora.
+- [x] La vista ya no salta al hacer click en una foto: `uirevision` fijo y la
+      cámara del usuario se reenvía en cada redibujado. Elegir una foto por
+      otra vía (selector, ID, al azar) gira hacia ella manteniendo el zoom.
 - [x] Release 1.0.0: versión en `pyproject.toml`, `CITATION.cff`, README y
       User-Agent; `CHANGELOG.md`; capturas de la web regeneradas; tag `v1.0.0`.
 

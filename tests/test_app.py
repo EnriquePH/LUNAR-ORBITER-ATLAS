@@ -17,6 +17,7 @@ from orbiter.app import (
     list_mission_frames,
     metadata_rows,
     poll_mosaic,
+    remember_camera,
     render_globe,
     render_page,
     select_clicked_image,
@@ -141,7 +142,7 @@ def test_render_globe_combines_selection_and_mission_tiles(monkeypatch):
     tiles = {"1005": _tile("1005", 0, 0), "1006": _tile("1006", 10, 10)}
     monkeypatch.setattr(app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles)))
 
-    figure = render_globe("1041", 2, 1)
+    figure, *_ = render_globe("1041", 2, 1)
 
     mosaic, selected = figure.data[1:3]
     assert set(np.asarray(mosaic.customdata)) == {1005, 1006}
@@ -235,10 +236,9 @@ def test_click_selects_the_photo_without_hiding_it(monkeypatch):
     x, y, z = selenographic_to_cartesian(-40.2, -120.1, 1.003)
     click = {"points": [{"x": x, "y": y, "z": z, "curveNumber": 1}]}
 
-    assert select_clicked_image(click, "1041", 1) == "1100"
-    mesh = next(
-        trace for trace in render_globe("1041", 1, 1).data if trace.type == "mesh3d"
-    )
+    assert select_clicked_image(click, "1041", 1) == ("1100", "1100")
+    figure, *_ = render_globe("1041", 1, 1)
+    mesh = next(trace for trace in figure.data if trace.type == "mesh3d")
     assert 1100 in set(np.asarray(mesh.customdata))
 
 
@@ -249,9 +249,10 @@ def test_click_ignores_empty_space_and_the_current_selection(monkeypatch, loader
     x, y, z = selenographic_to_cartesian(3.3, 39.15, 1.006)
     on_selection = {"points": [{"x": x, "y": y, "z": z}]}
 
-    assert select_clicked_image(empty, "1041", 1) is no_update
-    assert select_clicked_image(None, "1041", 1) is no_update
-    assert select_clicked_image(on_selection, "1041", 1) is no_update
+    unchanged = (no_update, no_update)
+    assert select_clicked_image(empty, "1041", 1) == unchanged
+    assert select_clicked_image(None, "1041", 1) == unchanged
+    assert select_clicked_image(on_selection, "1041", 1) == unchanged
 
 
 def test_select_frame_loads_the_chosen_frame():
@@ -397,8 +398,58 @@ def test_render_globe_follows_the_labels_switch(monkeypatch):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
 
     def names(value):
-        return {trace.name for trace in render_globe("1041", 0, None, value).data}
+        figure, *_ = render_globe("1041", 0, None, value)
+        return {trace.name for trace in figure.data}
 
     assert "labels" in names(["on"])
     assert "labels" not in names([])
     assert "labels" not in names(None)
+
+
+FAR_SIDE = {
+    "eye": {"x": -0.8, "y": 0.0, "z": 0.0},
+    "center": {"x": 0, "y": 0, "z": 0},
+    "up": {"x": 0, "y": 0, "z": 1},
+}
+
+
+def _eye(figure):
+    eye = figure.layout.scene.camera.eye
+    return np.array([eye.x, eye.y, eye.z])
+
+
+def test_render_globe_keeps_the_view_for_a_clicked_photo(monkeypatch, loader):
+    monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
+
+    figure, focused, camera, clicked = render_globe(
+        "1041", 0, 1, ["on"], FAR_SIDE, "1041", "1005"
+    )
+
+    assert np.allclose(_eye(figure), [-0.8, 0, 0])
+    assert (focused, clicked) == ("1041", None)
+    assert camera["eye"]["x"] == pytest.approx(-0.8)
+
+
+def test_render_globe_turns_to_a_new_selection_keeping_the_zoom(monkeypatch, loader):
+    monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
+
+    figure, focused, _, _ = render_globe("1041", 0, 1, ["on"], FAR_SIDE, None, "1005")
+
+    eye = _eye(figure)
+    assert np.linalg.norm(eye) == pytest.approx(0.8)
+    assert np.allclose(eye / 0.8, selenographic_to_cartesian(3.3, 39.15))
+    assert focused == "1041"
+
+
+def test_render_globe_keeps_the_view_while_tiles_arrive(monkeypatch, loader):
+    monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
+
+    figure, *_ = render_globe("1041", 25, 1, ["on"], FAR_SIDE, None, "1041")
+
+    assert np.allclose(_eye(figure), [-0.8, 0, 0])
+
+
+def test_remember_camera_keeps_only_whole_camera_updates():
+    assert remember_camera({"scene.camera": FAR_SIDE}) == FAR_SIDE
+    assert remember_camera({"autosize": True}) is no_update
+    assert remember_camera(None) is no_update

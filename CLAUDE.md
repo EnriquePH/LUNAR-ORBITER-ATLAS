@@ -34,8 +34,13 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   Callbacks: `update_frame` (5 salidas), `render_globe`, `list_mission_frames` (arranca
   el `LOADER`), `poll_mosaic` (Interval), `select_clicked_image` (el click solo
   selecciona la foto; **no la oculta**), `select_frame`, `select_random_frame`,
-  `export_csv` y `export_geojson` (`dcc.Download`). Se prueban llamándolos
-  directamente.
+  `export_csv`, `export_geojson` (`dcc.Download`) y `remember_camera`. Se prueban
+  llamándolos directamente.
+  **Cámara**: `uirevision` es fijo y `render_globe` reenvía siempre la vista del
+  usuario (`globe-camera`, desde `relayoutData`), así que redibujar no la mueve.
+  Solo una selección nueva que no viene de un click (`clicked-frame`) gira hacia
+  la foto conservando la distancia (`focus_camera`); `focused-frame` evita
+  repetir el giro al llegar teselas.
 - `orbiter/globe.py` — figura Plotly: esfera base, **todas las teselas en un único
   `Mesh3d`** (200 `Surface` congelan el navegador), foto seleccionada como `Surface`,
   marcador, etiqueta con el ID en el centro de cada foto (`_frame_labels`; la
