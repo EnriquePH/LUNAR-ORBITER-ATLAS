@@ -44,8 +44,8 @@ jupyter lab "LUNAR ORBITER.ipynb"
 ```
 
 En el visor, introduce un identificador de fotograma como `1041` y pulsa
-**Cargar**. Ajusta los controles de azimut y elevación para cambiar la vista de
-la esfera.
+**Cargar**. La esfera se centra en el fotograma; arrástrala para rotarla y usa
+la rueda del ratón para acercarte.
 
 ## Descargas y atribución
 

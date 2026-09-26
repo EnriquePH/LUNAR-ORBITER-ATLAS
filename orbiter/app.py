@@ -6,11 +6,9 @@ import base64
 from io import BytesIO
 
 import numpy as np
+import plotly.graph_objects as go
 import requests
 from dash import Dash, Input, Output, State, dcc, html, no_update
-from matplotlib import cm
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.figure import Figure
 from PIL import Image
 
 from orbiter.lpi import OrbiterFrame, fetch_frame
@@ -18,34 +16,34 @@ from orbiter.urls import frame_url
 
 DEFAULT_FRAME_ID = "1041"
 PATCH_WIDTH_DEGREES = 18.0
-TEXTURE_SIZE = (144, 144)
+TEXTURE_SIZE = (256, 256)
 ACCENT = "#ff7547"
+BACKGROUND = "#151617"
+BASE_SURFACE_VALUE = 112.0
+# Lifts the frame patch above the base sphere so it is not z-fighting with it.
+PATCH_RADIUS = 1.003
+CAMERA_DISTANCE = 1.6
+GRAY_SCALE = [[0.0, "#000000"], [1.0, "#ffffff"]]
 
 
-def _sphere_coordinates() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    latitude_values = np.linspace(-90, 90, 73)
-    longitude_values = np.linspace(-180, 180, 145)
-    latitudes = np.radians(latitude_values)
-    longitudes = np.radians(longitude_values)
-    latitude_grid, longitude_grid = np.meshgrid(latitudes, longitudes, indexing="ij")
-    x_coordinates = np.cos(latitude_grid) * np.cos(longitude_grid)
-    y_coordinates = np.cos(latitude_grid) * np.sin(longitude_grid)
-    z_coordinates = np.sin(latitude_grid)
-    return x_coordinates, y_coordinates, z_coordinates, latitude_values, longitude_values
+def _to_cartesian(
+    latitude_degrees: np.ndarray | float,
+    longitude_degrees: np.ndarray | float,
+    radius: float = 1.0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    latitudes = np.radians(latitude_degrees)
+    longitudes = np.radians(longitude_degrees)
+    return (
+        radius * np.cos(latitudes) * np.cos(longitudes),
+        radius * np.cos(latitudes) * np.sin(longitudes),
+        radius * np.sin(latitudes),
+    )
 
 
 def _thumbnail(image_bytes: bytes) -> Image.Image:
     image = Image.open(BytesIO(image_bytes)).convert("L")
     image.thumbnail(TEXTURE_SIZE, Image.Resampling.LANCZOS)
     return image
-
-
-def _frame_texture(frame: OrbiterFrame | dict) -> np.ndarray:
-    if isinstance(frame, OrbiterFrame):
-        image = _thumbnail(frame.image_bytes)
-    else:
-        image = Image.open(BytesIO(base64.b64decode(frame["texture"])))
-    return np.asarray(image, dtype=np.float32)
 
 
 def format_coordinates(latitude: float, longitude: float) -> str:
@@ -58,85 +56,117 @@ def format_coordinates(latitude: float, longitude: float) -> str:
     )
 
 
-def make_globe(
-    frame: OrbiterFrame | dict | None = None,
-    azimuth: float = 35,
-    elevation: float = 22,
-) -> str:
-    """Render the sphere to a PNG and return it as a browser-ready data URL."""
-    x_coordinates, y_coordinates, z_coordinates, latitude_values, longitude_values = _sphere_coordinates()
-    surface = np.full(x_coordinates.shape, 112.0, dtype=np.float32)
-    frame_latitude = frame_longitude = None
-    frame_id = ""
-
-    if frame is not None:
-        image = _frame_texture(frame)
-        height, width = image.shape
-        frame_latitude = float(frame.latitude if isinstance(frame, OrbiterFrame) else frame["latitude"])
-        frame_longitude = float(frame.longitude if isinstance(frame, OrbiterFrame) else frame["longitude"])
-        frame_id = frame.frame_id if isinstance(frame, OrbiterFrame) else str(frame["frame_id"])
-        latitudes = latitude_values[:, None]
-        longitudes = longitude_values[None, :]
-        delta_longitude = (longitudes - frame_longitude + 180) % 360 - 180
-        patch_height = PATCH_WIDTH_DEGREES * height / width
-        row_start = frame_latitude + patch_height / 2
-        row_fraction = (row_start - latitudes) / patch_height
-        column_fraction = delta_longitude / PATCH_WIDTH_DEGREES + 0.5
-        mask = (
-            (row_fraction >= 0)
-            & (row_fraction <= 1)
-            & (column_fraction >= 0)
-            & (column_fraction <= 1)
-        )
-        rows = np.clip((row_fraction * (height - 1)).astype(int), 0, height - 1)
-        columns = np.clip((column_fraction * (width - 1)).astype(int), 0, width - 1)
-        sampled = image[rows, columns]
-        surface[mask] = sampled[mask]
-
-    figure = Figure(figsize=(7, 6), dpi=115, facecolor="#151617")
-    FigureCanvasAgg(figure)
-    axes = figure.add_subplot(111, projection="3d")
-    axes.set_facecolor("#151617")
-    axes.plot_surface(
-        x_coordinates,
-        y_coordinates,
-        z_coordinates,
-        facecolors=cm.gray(np.clip(surface / 255, 0, 1)),
-        rstride=1,
-        cstride=1,
-        linewidth=0,
-        antialiased=False,
-        shade=True,
+def _base_sphere() -> go.Surface:
+    latitudes, longitudes = np.meshgrid(
+        np.linspace(-90, 90, 73), np.linspace(-180, 180, 145), indexing="ij"
     )
-    if frame_latitude is not None and frame_longitude is not None:
-        latitude_radians = np.radians(frame_latitude)
-        longitude_radians = np.radians(frame_longitude)
-        axes.scatter(
-            [1.01 * np.cos(latitude_radians) * np.cos(longitude_radians)],
-            [1.01 * np.cos(latitude_radians) * np.sin(longitude_radians)],
-            [1.01 * np.sin(latitude_radians)],
-            color=ACCENT,
-            s=16,
-            depthshade=False,
-        )
-        axes.text(
-            1.07 * np.cos(latitude_radians) * np.cos(longitude_radians),
-            1.07 * np.cos(latitude_radians) * np.sin(longitude_radians),
-            1.07 * np.sin(latitude_radians),
-            frame_id,
-            color="#ff9c79",
-            fontsize=8,
-        )
-    axes.set(xlim=(-1.08, 1.08), ylim=(-1.08, 1.08), zlim=(-1.08, 1.08))
-    axes.set_box_aspect((1, 1, 1))
-    axes.view_init(elev=elevation, azim=azimuth)
-    axes.set_axis_off()
-    figure.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(latitudes, longitudes)
+    return go.Surface(
+        x=x_coordinates,
+        y=y_coordinates,
+        z=z_coordinates,
+        surfacecolor=np.full(latitudes.shape, BASE_SURFACE_VALUE),
+        colorscale=GRAY_SCALE,
+        cmin=0,
+        cmax=255,
+        showscale=False,
+        hoverinfo="skip",
+        lighting={"ambient": 0.55, "diffuse": 0.7, "specular": 0.05},
+    )
 
-    output = BytesIO()
-    figure.savefig(output, format="png", facecolor=figure.get_facecolor(), dpi=115)
-    encoded_image = base64.b64encode(output.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{encoded_image}"
+
+def _frame_patch(frame: OrbiterFrame) -> go.Surface:
+    """Map the preview onto a lat/lon patch centred on the principal point.
+
+    The patch is schematic: its angular size is fixed, not derived from the
+    camera geometry, and longitudes widen with latitude so it keeps its aspect.
+    """
+    image = np.asarray(_thumbnail(frame.image_bytes), dtype=np.float32)
+    height, width = image.shape
+    patch_height = PATCH_WIDTH_DEGREES * height / width
+    longitude_span = PATCH_WIDTH_DEGREES / max(np.cos(np.radians(frame.latitude)), 0.2)
+    # Image rows run north to south; columns run west to east.
+    latitudes = np.clip(
+        np.linspace(
+            frame.latitude + patch_height / 2, frame.latitude - patch_height / 2, height
+        ),
+        -90,
+        90,
+    )
+    longitudes = np.linspace(
+        frame.longitude - longitude_span / 2,
+        frame.longitude + longitude_span / 2,
+        width,
+    )
+    latitude_grid, longitude_grid = np.meshgrid(latitudes, longitudes, indexing="ij")
+    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(
+        latitude_grid, longitude_grid, PATCH_RADIUS
+    )
+    return go.Surface(
+        x=x_coordinates,
+        y=y_coordinates,
+        z=z_coordinates,
+        surfacecolor=image,
+        colorscale=GRAY_SCALE,
+        cmin=0,
+        cmax=255,
+        showscale=False,
+        hoverinfo="skip",
+        lighting={"ambient": 0.8, "diffuse": 0.4, "specular": 0.0},
+    )
+
+
+def _frame_marker(frame: OrbiterFrame) -> go.Scatter3d:
+    x_coordinate, y_coordinate, z_coordinate = _to_cartesian(
+        frame.latitude, frame.longitude, 1.02
+    )
+    return go.Scatter3d(
+        x=[x_coordinate],
+        y=[y_coordinate],
+        z=[z_coordinate],
+        mode="markers+text",
+        marker={"size": 4, "color": ACCENT},
+        text=[frame.frame_id],
+        textposition="top center",
+        textfont={"color": "#ff9c79", "family": "DM Mono, monospace", "size": 11},
+        hovertext=[f"{frame.frame_id} · {format_coordinates(frame.latitude, frame.longitude)}"],
+        hoverinfo="text",
+    )
+
+
+def _camera_eye(latitude: float, longitude: float) -> dict[str, float]:
+    x_coordinate, y_coordinate, z_coordinate = _to_cartesian(
+        latitude, longitude, CAMERA_DISTANCE
+    )
+    return {"x": float(x_coordinate), "y": float(y_coordinate), "z": float(z_coordinate)}
+
+
+def make_globe(frame: OrbiterFrame | None = None) -> go.Figure:
+    """Build an interactive globe, centred on the frame when one is given."""
+    traces: list[go.Surface | go.Scatter3d] = [_base_sphere()]
+    if frame is None:
+        eye = _camera_eye(22, 35)
+    else:
+        traces += [_frame_patch(frame), _frame_marker(frame)]
+        eye = _camera_eye(frame.latitude, frame.longitude)
+
+    hidden_axis = {"visible": False, "range": [-1.1, 1.1]}
+    figure = go.Figure(traces)
+    figure.update_layout(
+        margin={"l": 0, "r": 0, "t": 0, "b": 0},
+        paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        scene={
+            "xaxis": hidden_axis,
+            "yaxis": hidden_axis,
+            "zaxis": hidden_axis,
+            "aspectmode": "cube",
+            "bgcolor": "rgba(0,0,0,0)",
+            "camera": {"eye": eye, "up": {"x": 0, "y": 0, "z": 1}},
+        },
+    )
+    return figure
+
 
 
 def _metadata_row(label: str, value_id: str, value: str = "—") -> html.Div:
@@ -179,18 +209,10 @@ app.index_string = """<!DOCTYPE html>
             .globe-panel { position:relative; min-width:0; min-height:590px; overflow:hidden; background:radial-gradient(ellipse at 50% 53%,#252626 0,#151617 45%,#101112 75%); }
             .globe-label { position:absolute; top:19px; left:20px; z-index:2; font:10px 'DM Mono',monospace; color:#aaa7a0; letter-spacing:.7px; pointer-events:none; }
             .globe-coordinates { position:absolute; right:20px; bottom:17px; z-index:2; font:10px 'DM Mono',monospace; color:#777973; pointer-events:none; }
-            .globe-render { display:block; width:100%; height:590px; object-fit:contain; }
+            .globe-render { width:100%; height:590px; }
             .side-panel { border-left:1px solid #333537; padding:22px 0 22px 24px; display:flex; flex-direction:column; gap:18px; }
             .side-heading { margin:0; font:500 21px 'Newsreader',serif; }
             .control-row { display:flex; gap:8px; }
-            .rotation-grid { display:grid; gap:14px; padding-top:3px; }
-            .rotation-control { display:grid; gap:7px; }
-            .rotation-label { display:flex; justify-content:space-between; color:#aaa7a0; font:9px 'DM Mono',monospace; letter-spacing:.5px; }
-            .rotation-control .rc-slider-track { background:#ff7547; }
-            .rotation-control .rc-slider-rail { background:#3d3f40; }
-            .rotation-control .rc-slider-handle { border-color:#ff7547; background:#151617; box-shadow:none; }
-            .rotation-control .rc-slider-handle:hover,.rotation-control .rc-slider-handle:active { border-color:#ff9c79; box-shadow:0 0 0 4px #ff754722; }
-            .rotation-control .rc-slider-mark-text { color:#777973; font:8px 'DM Mono',monospace; }
             .frame-input { width:100%; min-width:0; background:#181a1b; border:1px solid #4a4c4d; color:#e6e3dd; border-radius:2px; padding:11px 12px; font:12px 'DM Mono',monospace; }
             .load-button { white-space:nowrap; border:0; border-radius:2px; padding:0 13px; color:#141414; background:#ff7547; font-size:11px; font-weight:700; cursor:pointer; }
             .load-button:hover { background:#ff946f; }
@@ -240,7 +262,6 @@ app.index_string = """<!DOCTYPE html>
 app.layout = html.Div(
     [
         dcc.Interval(id="initial-load", interval=500, n_intervals=0, max_intervals=1),
-        dcc.Store(id="frame-data"),
         html.Header(
             [
                 html.Div(
@@ -270,8 +291,8 @@ app.layout = html.Div(
             [
                 html.Section(
                     [
-                        html.Div("VISTA 3D  /  AJUSTA AZIMUT Y ELEVACIÓN", className="globe-label"),
-                        html.Img(id="globe-image", src=make_globe(), className="globe-render", alt="Esfera lunar 3D con la zona cubierta por el fotograma seleccionado"),
+                        html.Div("VISTA 3D  /  ARRASTRA PARA ROTAR · RUEDA PARA ACERCAR", className="globe-label"),
+                        dcc.Graph(id="globe", figure=make_globe(), className="globe-render", config={"displayModeBar": False, "responsive": True}),
                         html.Div("PROYECCIÓN DEL FOTOGRAMA · COBERTURA ESQUEMÁTICA", className="globe-coordinates"),
                     ],
                     className="globe-panel",
@@ -284,41 +305,6 @@ app.layout = html.Div(
                                 html.H2("Fotograma", className="side-heading"),
                             ],
                             className="source-block",
-                        ),
-                        html.Div(
-                            [
-                                html.Div(
-                                    [
-                                        html.Span("AZIMUT", className="rotation-label"),
-                                        dcc.Slider(
-                                            id="rotation-azimuth",
-                                            min=-180,
-                                            max=180,
-                                            step=5,
-                                            value=35,
-                                            marks={-180: "-180", 0: "0", 180: "180"},
-                                            tooltip={"placement": "bottom", "always_visible": False},
-                                        ),
-                                    ],
-                                    className="rotation-control",
-                                ),
-                                html.Div(
-                                    [
-                                        html.Span("ELEVACIÓN", className="rotation-label"),
-                                        dcc.Slider(
-                                            id="rotation-elevation",
-                                            min=-75,
-                                            max=75,
-                                            step=5,
-                                            value=22,
-                                            marks={-75: "-75", 0: "0", 75: "75"},
-                                            tooltip={"placement": "bottom", "always_visible": False},
-                                        ),
-                                    ],
-                                    className="rotation-control",
-                                ),
-                            ],
-                            className="rotation-grid source-block",
                         ),
                         html.Div(
                             [
@@ -372,14 +358,13 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("globe-image", "src"),
+    Output("globe", "figure"),
     Output("preview", "src"),
     Output("mission-value", "children"),
     Output("center-value", "children"),
     Output("frame-value", "children"),
     Output("image-link", "href"),
     Output("status", "children"),
-    Output("frame-data", "data"),
     Input("load-frame", "n_clicks"),
     Input("initial-load", "n_intervals"),
     State("frame-id", "value"),
@@ -391,37 +376,23 @@ def update_frame(_clicks: int, _interval: int, frame_id: str):
         frame = fetch_frame(frame_id)
     # RequestException subclasses OSError, so it must be handled first.
     except requests.RequestException as error:
-        return *unchanged, f"ERROR DE CONEXIÓN · {error}", no_update
+        return *unchanged, f"ERROR DE CONEXIÓN · {error}"
     except (ValueError, OSError, RuntimeError) as error:
-        return *unchanged, f"NO SE PUDO CARGAR · {error}", no_update
+        return *unchanged, f"NO SE PUDO CARGAR · {error}"
 
     image_data = base64.b64encode(frame.image_bytes).decode("ascii")
     image_src = f"data:image/jpeg;base64,{image_data}"
-    thumbnail = _thumbnail(frame.image_bytes)
-    thumbnail_buffer = BytesIO()
-    thumbnail.save(thumbnail_buffer, format="PNG")
-    render_data = {
-        "frame_id": frame.frame_id,
-        "mission": frame.mission,
-        "latitude": frame.latitude,
-        "longitude": frame.longitude,
-        "texture": base64.b64encode(thumbnail_buffer.getvalue()).decode("ascii"),
-    }
-    page_url = frame_url(frame.frame_id)
     center = format_coordinates(frame.latitude, frame.longitude)
     status = f"LPI EN LÍNEA · {frame.frame_id} · VISTA PREVIA RECIBIDA"
-    return make_globe(frame), image_src, frame.mission, center, frame.frame_id, page_url, status, render_data
-
-
-@app.callback(
-    Output("globe-image", "src", allow_duplicate=True),
-    Input("rotation-azimuth", "value"),
-    Input("rotation-elevation", "value"),
-    State("frame-data", "data"),
-    prevent_initial_call=True,
-)
-def rotate_globe(azimuth: float, elevation: float, frame_data: dict | None):
-    return make_globe(frame_data, azimuth, elevation)
+    return (
+        make_globe(frame),
+        image_src,
+        frame.mission,
+        center,
+        frame.frame_id,
+        frame_url(frame.frame_id),
+        status,
+    )
 
 
 if __name__ == "__main__":

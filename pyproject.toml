@@ -13,7 +13,6 @@ license-files = ["LICENSE"]
 dependencies = [
     "beautifulsoup4>=4.12",
     "dash>=2.17",
-    "matplotlib>=3.8",
     "numpy>=1.26",
     "pandas>=2.1",
     "pillow>=10.0",

@@ -1,4 +1,3 @@
-import base64
 from io import BytesIO
 
 import pytest
@@ -7,42 +6,52 @@ from dash import no_update
 from PIL import Image
 
 from orbiter import app as app_module
-from orbiter.app import format_coordinates, make_globe, rotate_globe, update_frame
+from orbiter.app import TEXTURE_SIZE, format_coordinates, make_globe, update_frame
 from orbiter.lpi import OrbiterFrame
 
-UPDATE_FRAME_OUTPUTS = 8
+UPDATE_FRAME_OUTPUTS = 7
 
 
-def _jpeg_bytes() -> bytes:
-    image = Image.new("L", (48, 32), color=160)
+def _jpeg_bytes(size: tuple[int, int] = (48, 32)) -> bytes:
+    image = Image.new("L", size, color=160)
     image_bytes = BytesIO()
     image.save(image_bytes, format="JPEG")
     return image_bytes.getvalue()
 
 
-def _frame() -> OrbiterFrame:
+def _frame(latitude: float = 3.3, image_size: tuple[int, int] = (48, 32)):
     return OrbiterFrame(
         frame_id="1041",
         mission="Lunar Orbiter 1",
-        latitude=3.3,
+        latitude=latitude,
         longitude=39.15,
         image_url="https://example.test/1041.jpg",
-        image_bytes=_jpeg_bytes(),
+        image_bytes=_jpeg_bytes(image_size),
     )
 
 
-def _decode_png(data_url: str) -> Image.Image:
-    return Image.open(BytesIO(base64.b64decode(data_url.split(",", 1)[1])))
+def test_make_globe_without_frame_has_only_base_sphere():
+    figure = make_globe()
+
+    assert [trace.type for trace in figure.data] == ["surface"]
 
 
-def test_make_globe_renders_frame_as_png():
-    rendered = make_globe(_frame(), azimuth=60, elevation=25)
-    rendered_image = _decode_png(rendered)
+def test_make_globe_adds_textured_patch_and_marker():
+    figure = make_globe(_frame())
 
-    assert rendered.startswith("data:image/png;base64,")
-    assert rendered_image.format == "PNG"
-    assert rendered_image.width > 300
-    assert rendered_image.height > 300
+    base, patch, marker = figure.data
+    assert (base.type, patch.type, marker.type) == ("surface", "surface", "scatter3d")
+    assert patch.surfacecolor.shape == (32, 48)
+    assert list(marker.text) == ["1041"]
+
+
+def test_make_globe_limits_texture_size_and_centres_camera():
+    figure = make_globe(_frame(latitude=-80, image_size=(1200, 900)))
+
+    patch = figure.data[1]
+    assert max(patch.surfacecolor.shape) <= max(TEXTURE_SIZE)
+    assert patch.z.min() >= -1.01
+    assert figure.layout.scene.camera.eye.z < 0
 
 
 @pytest.mark.parametrize(
@@ -63,16 +72,14 @@ def test_update_frame_returns_all_outputs_on_success(monkeypatch):
     result = update_frame(1, 0, "1041")
 
     assert len(result) == UPDATE_FRAME_OUTPUTS
-    globe, preview, mission, center, frame_id, link, status, data = result
-    assert globe.startswith("data:image/png;base64,")
+    globe, preview, mission, center, frame_id, link, status = result
+    assert len(globe.data) == 3
     assert preview.startswith("data:image/jpeg;base64,")
     assert mission == "Lunar Orbiter 1"
     assert center == "3.30° N  /  39.15° E"
     assert frame_id == "1041"
     assert link.endswith("/frame/?1041")
     assert "1041" in status
-    assert data["frame_id"] == "1041"
-    assert rotate_globe(10, 20, data).startswith("data:image/png;base64,")
 
 
 @pytest.mark.parametrize(
@@ -93,7 +100,3 @@ def test_update_frame_reports_errors_without_changing_view(monkeypatch, error, p
     assert len(result) == UPDATE_FRAME_OUTPUTS
     assert result[6].startswith(prefix)
     assert all(value is no_update for index, value in enumerate(result) if index != 6)
-
-
-def test_rotate_globe_without_frame():
-    assert rotate_globe(0, 0, None).startswith("data:image/png;base64,")

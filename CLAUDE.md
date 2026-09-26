@@ -21,10 +21,11 @@ Usa siempre el entorno `.venv` (Python 3.14; el proyecto declara >=3.10):
 - `orbiter/lpi.py` — cliente HTTP + parser HTML (BeautifulSoup + regex sobre el texto).
   `fetch_frame` valida el ID y delega en `_fetch_frame_cached` (`lru_cache(16)`).
   Devuelve el dataclass inmutable `OrbiterFrame`.
-- `orbiter/app.py` — app Dash: CSS inline en `app.index_string`, layout, y dos callbacks
-  (`update_frame` descarga/renderiza; `rotate_globe` re-renderiza con azimut/elevación).
-  `make_globe` renderiza la esfera con matplotlib 3D en el servidor y devuelve un PNG
-  como data URL. Acepta un `OrbiterFrame` o el dict serializado en `dcc.Store("frame-data")`.
+- `orbiter/app.py` — app Dash: CSS inline en `app.index_string`, layout y un callback
+  (`update_frame`, 7 salidas). `make_globe` devuelve una `go.Figure` de Plotly: esfera
+  base + parche `go.Surface` con la textura del fotograma (`surfacecolor`) + marcador,
+  con la cámara centrada en el punto principal. La rotación es en el navegador.
+  El parche es esquemático (`PATCH_WIDTH_DEGREES` fijo), no un mosaico cartográfico.
 - `tests/` — pytest; la red se simula con `monkeypatch` sobre `orbiter.lpi.requests.get`.
 - `LUNAR ORBITER.ipynb` — cuaderno exploratorio original (2020). Excluido de Ruff; no
   modificar salvo petición expresa.
