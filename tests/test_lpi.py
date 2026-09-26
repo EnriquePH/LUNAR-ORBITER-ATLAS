@@ -2,7 +2,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from orbiter.lpi import fetch_frame, parse_frame_page
+from orbiter.lpi import (
+    fetch_frame,
+    fetch_mission_frames,
+    parse_frame_page,
+    parse_mission_page,
+)
 
 FRAME_PAGE = """
 <table>
@@ -11,6 +16,30 @@ FRAME_PAGE = """
       <td>Longitude:</td><td>39.15°</td></tr>
 </table>
 <a href="../images/preview/1041_med.jpg">medium</a>
+"""
+
+# Mirrors the layout of the live LPI frame table, including the &nbsp; spacing.
+FULL_FRAME_PAGE = """
+<table><tr><td>
+Mission: Lunar Orbiter 1<br>
+Spacecraft Position:<br>
+&nbsp; Altitude: 256.43 km &nbsp; Latitude: 4.29° &nbsp; Longitude: 41.17°<br>
+Principal Point:<br>
+&nbsp; Latitude: 3.30° &nbsp; Longitude: -39.15°<br>
+Illumination:<br>
+&nbsp; Sun Azimuth: 88.76° &nbsp; Incident Angle: 85.53°
+&nbsp; Emission Angle: 16.95° &nbsp; Phase Angle: 70.22° &nbsp; Alpha: 15.27°<br>
+Hi Resolution Plates(s):<br>
+&nbsp; 1041_h1 <a href="../images/preview/1041_h1.jpg">Preview JPG</a>
+&nbsp; 1041_med <a href="../images/preview/1041_med.jpg">Preview JPG</a>
+</td></tr></table>
+"""
+
+MISSION_PAGE = """
+<a href="../">Gallery</a>
+<a class="thumbnail-link" href="../frame/?1005"><img alt="1005"></a>
+<a class="thumbnail-link" href="../frame/?1006"><img alt="1006"></a>
+<a href="../frame/?1005">duplicate</a>
 """
 
 
@@ -22,7 +51,57 @@ def test_parse_frame_page_resolves_relative_preview_url():
         "latitude": 3.3,
         "longitude": 39.15,
         "image_url": "https://www.lpi.usra.edu/resources/lunarorbiter/images/preview/1041_med.jpg",
+        "spacecraft_altitude_km": None,
+        "spacecraft_latitude": None,
+        "spacecraft_longitude": None,
+        "sun_azimuth": None,
+        "incidence_angle": None,
+        "emission_angle": None,
+        "phase_angle": None,
     }
+
+
+def test_parse_frame_page_reads_spacecraft_and_illumination():
+    metadata = parse_frame_page("1041", FULL_FRAME_PAGE)
+
+    assert metadata["latitude"] == 3.3
+    assert metadata["longitude"] == -39.15
+    assert metadata["spacecraft_altitude_km"] == 256.43
+    assert metadata["spacecraft_latitude"] == 4.29
+    assert metadata["spacecraft_longitude"] == 41.17
+    assert metadata["sun_azimuth"] == 88.76
+    assert metadata["incidence_angle"] == 85.53
+    assert metadata["emission_angle"] == 16.95
+    assert metadata["phase_angle"] == 70.22
+    assert metadata["image_url"].endswith("/1041_med.jpg")
+
+
+def test_parse_mission_page_lists_unique_frames_in_order():
+    assert parse_mission_page(MISSION_PAGE) == ["1005", "1006"]
+
+
+@pytest.mark.parametrize("mission", [0, 6])
+def test_fetch_mission_frames_rejects_unknown_mission(monkeypatch, mission):
+    monkeypatch.setattr(
+        "orbiter.lpi.requests.get", lambda *a, **k: pytest.fail("sin red")
+    )
+
+    with pytest.raises(ValueError, match="entre 1 y 5"):
+        fetch_mission_frames(mission)
+
+
+def test_fetch_mission_frames_downloads_once(monkeypatch):
+    calls = []
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        return SimpleNamespace(text=MISSION_PAGE, raise_for_status=lambda: None)
+
+    monkeypatch.setattr("orbiter.lpi.requests.get", fake_get)
+
+    assert fetch_mission_frames(1) == ["1005", "1006"]
+    assert fetch_mission_frames(1) == ["1005", "1006"]
+    assert calls == ["https://www.lpi.usra.edu/resources/lunarorbiter/mission/?1"]
 
 
 def test_parse_frame_page_requires_principal_point():

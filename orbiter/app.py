@@ -8,11 +8,11 @@ from io import BytesIO
 import numpy as np
 import plotly.graph_objects as go
 import requests
-from dash import Dash, Input, Output, State, dcc, html, no_update
+from dash import Dash, Input, Output, dcc, html, no_update
 from PIL import Image
 
-from orbiter.lpi import OrbiterFrame, fetch_frame
-from orbiter.urls import frame_url
+from orbiter.lpi import OrbiterFrame, fetch_frame, fetch_mission_frames
+from orbiter.urls import MISSIONS_NUM, frame_url
 
 DEFAULT_FRAME_ID = "1041"
 PATCH_WIDTH_DEGREES = 18.0
@@ -169,14 +169,47 @@ def make_globe(frame: OrbiterFrame | None = None) -> go.Figure:
 
 
 
-def _metadata_row(label: str, value_id: str, value: str = "—") -> html.Div:
+def _metadata_row(label: str, value: str = "—") -> html.Div:
     return html.Div(
         [
             html.Span(label, className="meta-label"),
-            html.Span(value, id=value_id, className="meta-value"),
+            html.Span(value, className="meta-value"),
         ],
         className="meta-row",
     )
+
+
+def _degrees(*values: float | None) -> str:
+    if any(value is None for value in values):
+        return "—"
+    return "  /  ".join(f"{value:.2f}°" for value in values)
+
+
+def metadata_rows(frame: OrbiterFrame) -> list[html.Div]:
+    """Build the side-panel rows; fields missing from the LPI page show "—"."""
+    spacecraft_position = "—"
+    if frame.spacecraft_latitude is not None and frame.spacecraft_longitude is not None:
+        spacecraft_position = format_coordinates(
+            frame.spacecraft_latitude, frame.spacecraft_longitude
+        )
+    altitude = (
+        "—"
+        if frame.spacecraft_altitude_km is None
+        else f"{frame.spacecraft_altitude_km:.2f} km"
+    )
+    return [
+        _metadata_row("MISIÓN", frame.mission),
+        _metadata_row("FOTOGRAMA", frame.frame_id),
+        _metadata_row("PUNTO PRINCIPAL", format_coordinates(frame.latitude, frame.longitude)),
+        _metadata_row("ALTITUD DE LA NAVE", altitude),
+        _metadata_row("POSICIÓN DE LA NAVE", spacecraft_position),
+        _metadata_row("ACIMUT SOLAR", _degrees(frame.sun_azimuth)),
+        _metadata_row(
+            "INCIDENCIA / EMISIÓN",
+            _degrees(frame.incidence_angle, frame.emission_angle),
+        ),
+        _metadata_row("ÁNGULO DE FASE", _degrees(frame.phase_angle)),
+    ]
 
 
 app = Dash(__name__)
@@ -213,6 +246,17 @@ app.index_string = """<!DOCTYPE html>
             .side-panel { border-left:1px solid #333537; padding:22px 0 22px 24px; display:flex; flex-direction:column; gap:18px; }
             .side-heading { margin:0; font:500 21px 'Newsreader',serif; }
             .control-row { display:flex; gap:8px; }
+            .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+            .side-panel {
+                --Dash-Fill-Inverse-Strong:#181a1b; --Dash-Text-Strong:#e6e3dd; --Dash-Text-Weak:#aaa7a0;
+                --Dash-Text-Disabled:#5c5e5f; --Dash-Fill-Disabled:#141516; --Dash-Stroke-Strong:#4a4c4d;
+                --Dash-Stroke-Weak:#333537; --Dash-Fill-Interactive-Strong:#ff7547; --Dash-Fill-Interactive-Weak:#ff754722;
+                --Dash-Fill-Primary-Hover:#ff754722; --Dash-Fill-Primary-Active:#ff754733; --Dash-Text-Primary:#ff8a61;
+                --Dash-Shading-Strong:#00000099; --Dash-Shading-Weak:#00000055;
+            }
+            .selector-row > * { position:relative; min-width:0; }
+            .selector-row .dash-dropdown, .dash-dropdown-content { font:11px 'DM Mono',monospace; }
+            .selector-row .dash-dropdown-focus-target { width:100% !important; }
             .frame-input { width:100%; min-width:0; background:#181a1b; border:1px solid #4a4c4d; color:#e6e3dd; border-radius:2px; padding:11px 12px; font:12px 'DM Mono',monospace; }
             .load-button { white-space:nowrap; border:0; border-radius:2px; padding:0 13px; color:#141414; background:#ff7547; font-size:11px; font-weight:700; cursor:pointer; }
             .load-button:hover { background:#ff946f; }
@@ -310,6 +354,19 @@ app.layout = html.Div(
                             [
                                 html.Div(
                                     [
+                                        dcc.Dropdown(
+                                            id="mission-select",
+                                            options=[{"label": f"Lunar Orbiter {number}", "value": number} for number in range(1, MISSIONS_NUM + 1)],
+                                            placeholder="MISIÓN",
+                                            clearable=False,
+                                            searchable=False,
+                                        ),
+                                        dcc.Dropdown(id="frame-select", options=[], placeholder="FOTOGRAMA", disabled=True),
+                                    ],
+                                    className="selector-row",
+                                ),
+                                html.Div(
+                                    [
                                         dcc.Input(id="frame-id", value=DEFAULT_FRAME_ID, type="text", className="frame-input", debounce=True, inputMode="numeric"),
                                         html.Button("Cargar ↗", id="load-frame", n_clicks=0, className="load-button"),
                                     ],
@@ -330,11 +387,7 @@ app.layout = html.Div(
                             className="source-block",
                         ),
                         html.Div(
-                            [
-                                _metadata_row("MISIÓN", "mission-value"),
-                                _metadata_row("PUNTO PRINCIPAL", "center-value"),
-                                _metadata_row("FOTOGRAMA", "frame-value", DEFAULT_FRAME_ID),
-                            ],
+                            [_metadata_row("FOTOGRAMA", DEFAULT_FRAME_ID)],
                             id="metadata",
                             className="metadata source-block",
                         ),
@@ -360,18 +413,16 @@ app.layout = html.Div(
 @app.callback(
     Output("globe", "figure"),
     Output("preview", "src"),
-    Output("mission-value", "children"),
-    Output("center-value", "children"),
-    Output("frame-value", "children"),
+    Output("metadata", "children"),
     Output("image-link", "href"),
     Output("status", "children"),
     Input("load-frame", "n_clicks"),
     Input("initial-load", "n_intervals"),
-    State("frame-id", "value"),
+    Input("frame-id", "value"),
     prevent_initial_call=True,
 )
 def update_frame(_clicks: int, _interval: int, frame_id: str):
-    unchanged = (no_update,) * 6
+    unchanged = (no_update,) * 4
     try:
         frame = fetch_frame(frame_id)
     # RequestException subclasses OSError, so it must be handled first.
@@ -381,18 +432,42 @@ def update_frame(_clicks: int, _interval: int, frame_id: str):
         return *unchanged, f"NO SE PUDO CARGAR · {error}"
 
     image_data = base64.b64encode(frame.image_bytes).decode("ascii")
-    image_src = f"data:image/jpeg;base64,{image_data}"
-    center = format_coordinates(frame.latitude, frame.longitude)
     status = f"LPI EN LÍNEA · {frame.frame_id} · VISTA PREVIA RECIBIDA"
     return (
         make_globe(frame),
-        image_src,
-        frame.mission,
-        center,
-        frame.frame_id,
+        f"data:image/jpeg;base64,{image_data}",
+        metadata_rows(frame),
         frame_url(frame.frame_id),
         status,
     )
+
+
+@app.callback(
+    Output("frame-select", "options"),
+    Output("frame-select", "value"),
+    Output("frame-select", "disabled"),
+    Output("status", "children", allow_duplicate=True),
+    Input("mission-select", "value"),
+    prevent_initial_call=True,
+)
+def list_mission_frames(mission: int):
+    try:
+        frame_ids = fetch_mission_frames(mission)
+    except requests.RequestException as error:
+        return [], None, True, f"ERROR DE CONEXIÓN · {error}"
+    except ValueError as error:
+        return [], None, True, f"NO SE PUDO CARGAR · {error}"
+    status = f"MISIÓN {mission} · {len(frame_ids)} FOTOGRAMAS"
+    return frame_ids, None, False, status
+
+
+@app.callback(
+    Output("frame-id", "value"),
+    Input("frame-select", "value"),
+    prevent_initial_call=True,
+)
+def select_frame(frame_id: str | None):
+    return frame_id or no_update
 
 
 if __name__ == "__main__":

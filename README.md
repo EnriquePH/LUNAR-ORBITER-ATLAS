@@ -43,15 +43,17 @@ Para abrir el cuaderno:
 jupyter lab "LUNAR ORBITER.ipynb"
 ```
 
-En el visor, introduce un identificador de fotograma como `1041` y pulsa
-**Cargar**. La esfera se centra en el fotograma; arrástrala para rotarla y usa
+En el visor, elige una misión y uno de sus fotogramas en los selectores, o
+introduce un identificador como `1041` y pulsa **Cargar** (o Intro). El panel
+muestra el punto principal, la posición y altitud de la nave y los ángulos de
+iluminación publicados por el LPI. La esfera se centra en el fotograma; arrástrala para rotarla y usa
 la rueda del ratón para acercarte.
 
 ## Descargas y atribución
 
 Las imágenes se solicitan al LPI cuando se carga un fotograma y se mantienen en
-una caché de memoria limitada a 16 fotogramas para evitar solicitudes
-repetidas; no se copian al repositorio. Consulta las condiciones de uso antes de
+una caché de memoria limitada a 16 fotogramas (y las listas de las 5 misiones)
+para evitar solicitudes repetidas; no se copian al repositorio. Consulta las condiciones de uso antes de
 automatizar solicitudes o redistribuir imágenes. Evita cargas innecesarias y
 conserva la URL de origen y los metadatos de atribución publicados por el
 archivo.

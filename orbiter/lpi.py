@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from orbiter.urls import frame_url
+from orbiter.urls import MISSIONS_NUM, frame_url, mission_url
 
 USER_AGENT = "LunarOrbiterLocalViewer/0.1 (educational; contact: local user)"
 
@@ -23,10 +23,56 @@ class OrbiterFrame:
     longitude: float
     image_url: str
     image_bytes: bytes
+    spacecraft_altitude_km: float | None = None
+    spacecraft_latitude: float | None = None
+    spacecraft_longitude: float | None = None
+    sun_azimuth: float | None = None
+    incidence_angle: float | None = None
+    emission_angle: float | None = None
+    phase_angle: float | None = None
 
 
-def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float]:
-    """Extract mission, principal-point coordinates, and preview URL."""
+_NUMBER = r"(-?\d+(?:\.\d+)?)"
+# Optional fields: (key, section label, value label). Each value is the first
+# number after its label inside its section of the page text.
+_OPTIONAL_FIELDS = (
+    ("spacecraft_altitude_km", "Spacecraft Position", "Altitude"),
+    ("spacecraft_latitude", "Spacecraft Position", "Latitude"),
+    ("spacecraft_longitude", "Spacecraft Position", "Longitude"),
+    ("sun_azimuth", "Illumination", "Sun Azimuth"),
+    ("incidence_angle", "Illumination", "Incident Angle"),
+    ("emission_angle", "Illumination", "Emission Angle"),
+    ("phase_angle", "Illumination", "Phase Angle"),
+)
+_SECTION_LABELS = (
+    "Spacecraft Position",
+    "Principal Point",
+    "Illumination",
+    "Hi Resolution Plate",
+)
+
+
+def _section(text: str, label: str) -> str:
+    """Return the page text between ``label:`` and the next known section."""
+    start = re.search(rf"{label}:", text, re.IGNORECASE)
+    if start is None:
+        return ""
+    others = "|".join(re.escape(other) for other in _SECTION_LABELS if other != label)
+    end = re.search(rf"(?:{others})", text[start.end():], re.IGNORECASE)
+    return text[start.end():start.end() + end.start()] if end else text[start.end():]
+
+
+def _optional_number(section: str, label: str) -> float | None:
+    match = re.search(rf"{re.escape(label)}:\s*{_NUMBER}", section, re.IGNORECASE)
+    return float(match.group(1)) if match else None
+
+
+def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float | None]:
+    """Extract mission, coordinates, illumination, and preview URL.
+
+    Principal point and preview are required; the other fields become ``None``
+    when the page does not list them.
+    """
     soup = BeautifulSoup(page_html, "html.parser")
     text = " ".join(soup.stripped_strings)
 
@@ -61,7 +107,22 @@ def parse_frame_page(frame_id: str, page_html: str) -> dict[str, str | float]:
         "latitude": float(point_match.group(1)),
         "longitude": float(point_match.group(2)),
         "image_url": image_url,
+        **{
+            key: _optional_number(_section(text, section), label)
+            for key, section, label in _OPTIONAL_FIELDS
+        },
     }
+
+
+def parse_mission_page(page_html: str) -> list[str]:
+    """Return the frame IDs linked from a mission gallery, in page order."""
+    soup = BeautifulSoup(page_html, "html.parser")
+    frame_ids = []
+    for link in soup.find_all("a", href=re.compile(r"frame/\?\d+$")):
+        frame_id = link["href"].rsplit("?", 1)[1]
+        if frame_id not in frame_ids:
+            frame_ids.append(frame_id)
+    return frame_ids
 
 
 def fetch_frame(frame_id: str) -> OrbiterFrame:
@@ -92,4 +153,24 @@ def _fetch_frame_cached(frame_id: str) -> OrbiterFrame:
         longitude=float(metadata["longitude"]),
         image_url=str(metadata["image_url"]),
         image_bytes=image_response.content,
+        **{key: metadata[key] for key, _, _ in _OPTIONAL_FIELDS},
     )
+
+
+def fetch_mission_frames(mission: int) -> list[str]:
+    """Fetch the frame IDs of one mission (1–5); results are cached."""
+    if mission not in range(1, MISSIONS_NUM + 1):
+        raise ValueError(f"La misión debe estar entre 1 y {MISSIONS_NUM}.")
+    return list(_fetch_mission_frames_cached(mission))
+
+
+@lru_cache(maxsize=MISSIONS_NUM)
+def _fetch_mission_frames_cached(mission: int) -> tuple[str, ...]:
+    response = requests.get(
+        mission_url(mission), headers={"User-Agent": USER_AGENT}, timeout=20
+    )
+    response.raise_for_status()
+    frame_ids = parse_mission_page(response.text)
+    if not frame_ids:
+        raise ValueError(f"No se encontraron fotogramas para la misión {mission}.")
+    return tuple(frame_ids)
