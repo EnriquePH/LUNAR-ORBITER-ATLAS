@@ -65,3 +65,7 @@ h1 { margin:5px 0 0; font:600 42px 'Newsreader',serif; letter-spacing:0; }
     .preview-frame { height:260px; }
     .footbar { flex-direction:column; gap:7px; }
 }
+.mosaic-row { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+.text-button { border:0; background:none; padding:0; color:#ff8a61; font:9px 'DM Mono',monospace; letter-spacing:.4px; cursor:pointer; white-space:nowrap; }
+.text-button:hover { color:#ffc1aa; }
+.text-button:disabled { color:#5c5e5f; cursor:default; }

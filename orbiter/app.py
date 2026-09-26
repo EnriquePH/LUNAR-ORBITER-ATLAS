@@ -6,38 +6,28 @@ import base64
 from io import BytesIO
 
 import numpy as np
-import plotly.graph_objects as go
 import requests
-from dash import Dash, Input, Output, dcc, html, no_update
+from dash import Dash, Input, Output, State, dcc, html, no_update
 from PIL import Image
 
+from orbiter.catalog import MissionLoader, TileStore, default_cache_dir
+from orbiter.globe import (
+    GlobeImage,
+    format_coordinates,
+    image_at,
+    make_globe,
+    visible_images,
+)
 from orbiter.lpi import OrbiterFrame, fetch_frame, fetch_mission_frames
 from orbiter.urls import MISSIONS_NUM, frame_url
 
 DEFAULT_FRAME_ID = "1041"
-PATCH_WIDTH_DEGREES = 18.0
+DEFAULT_MISSION = 1
 TEXTURE_SIZE = (256, 256)
-ACCENT = "#ff7547"
-BACKGROUND = "#151617"
-BASE_SURFACE_VALUE = 112.0
-# Lifts the frame patch above the base sphere so it is not z-fighting with it.
-PATCH_RADIUS = 1.003
-CAMERA_DISTANCE = 1.6
-GRAY_SCALE = [[0.0, "#000000"], [1.0, "#ffffff"]]
+# Re-render the globe after this many new tiles while a mission is loading.
+MOSAIC_RENDER_STEP = 25
 
-
-def _to_cartesian(
-    latitude_degrees: np.ndarray | float,
-    longitude_degrees: np.ndarray | float,
-    radius: float = 1.0,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    latitudes = np.radians(latitude_degrees)
-    longitudes = np.radians(longitude_degrees)
-    return (
-        radius * np.cos(latitudes) * np.cos(longitudes),
-        radius * np.cos(latitudes) * np.sin(longitudes),
-        radius * np.sin(latitudes),
-    )
+LOADER = MissionLoader(TileStore(default_cache_dir()))
 
 
 def _thumbnail(image_bytes: bytes) -> Image.Image:
@@ -46,132 +36,15 @@ def _thumbnail(image_bytes: bytes) -> Image.Image:
     return image
 
 
-def format_coordinates(latitude: float, longitude: float) -> str:
-    """Format signed degrees with hemisphere letters (N/S, E/W)."""
-    latitude_hemisphere = "N" if latitude >= 0 else "S"
-    longitude_hemisphere = "E" if longitude >= 0 else "W"
-    return (
-        f"{abs(latitude):.2f}° {latitude_hemisphere}  /  "
-        f"{abs(longitude):.2f}° {longitude_hemisphere}"
+def globe_image(frame: OrbiterFrame) -> GlobeImage:
+    """Convert a fetched frame into a high-resolution globe texture."""
+    return GlobeImage(
+        frame_id=frame.frame_id,
+        latitude=frame.latitude,
+        longitude=frame.longitude,
+        altitude_km=frame.spacecraft_altitude_km,
+        texture=np.asarray(_thumbnail(frame.image_bytes), dtype=np.uint8),
     )
-
-
-def _base_sphere() -> go.Surface:
-    latitudes, longitudes = np.meshgrid(
-        np.linspace(-90, 90, 73), np.linspace(-180, 180, 145), indexing="ij"
-    )
-    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(latitudes, longitudes)
-    return go.Surface(
-        x=x_coordinates,
-        y=y_coordinates,
-        z=z_coordinates,
-        surfacecolor=np.full(latitudes.shape, BASE_SURFACE_VALUE),
-        colorscale=GRAY_SCALE,
-        cmin=0,
-        cmax=255,
-        showscale=False,
-        hoverinfo="skip",
-        lighting={"ambient": 0.55, "diffuse": 0.7, "specular": 0.05},
-    )
-
-
-def _frame_patch(frame: OrbiterFrame) -> go.Surface:
-    """Map the preview onto a lat/lon patch centred on the principal point.
-
-    The patch is schematic: its angular size is fixed, not derived from the
-    camera geometry, and longitudes widen with latitude so it keeps its aspect.
-    """
-    image = np.asarray(_thumbnail(frame.image_bytes), dtype=np.float32)
-    height, width = image.shape
-    patch_height = PATCH_WIDTH_DEGREES * height / width
-    longitude_span = PATCH_WIDTH_DEGREES / max(np.cos(np.radians(frame.latitude)), 0.2)
-    # Image rows run north to south; columns run west to east.
-    latitudes = np.clip(
-        np.linspace(
-            frame.latitude + patch_height / 2, frame.latitude - patch_height / 2, height
-        ),
-        -90,
-        90,
-    )
-    longitudes = np.linspace(
-        frame.longitude - longitude_span / 2,
-        frame.longitude + longitude_span / 2,
-        width,
-    )
-    latitude_grid, longitude_grid = np.meshgrid(latitudes, longitudes, indexing="ij")
-    x_coordinates, y_coordinates, z_coordinates = _to_cartesian(
-        latitude_grid, longitude_grid, PATCH_RADIUS
-    )
-    return go.Surface(
-        x=x_coordinates,
-        y=y_coordinates,
-        z=z_coordinates,
-        surfacecolor=image,
-        colorscale=GRAY_SCALE,
-        cmin=0,
-        cmax=255,
-        showscale=False,
-        hoverinfo="skip",
-        lighting={"ambient": 0.8, "diffuse": 0.4, "specular": 0.0},
-    )
-
-
-def _frame_marker(frame: OrbiterFrame) -> go.Scatter3d:
-    x_coordinate, y_coordinate, z_coordinate = _to_cartesian(
-        frame.latitude, frame.longitude, 1.02
-    )
-    return go.Scatter3d(
-        x=[x_coordinate],
-        y=[y_coordinate],
-        z=[z_coordinate],
-        mode="markers+text",
-        marker={"size": 4, "color": ACCENT},
-        text=[frame.frame_id],
-        textposition="top center",
-        textfont={"color": "#ff9c79", "family": "DM Mono, monospace", "size": 11},
-        hovertext=[
-            f"{frame.frame_id} · {format_coordinates(frame.latitude, frame.longitude)}"
-        ],
-        hoverinfo="text",
-    )
-
-
-def _camera_eye(latitude: float, longitude: float) -> dict[str, float]:
-    x_coordinate, y_coordinate, z_coordinate = _to_cartesian(
-        latitude, longitude, CAMERA_DISTANCE
-    )
-    return {
-        "x": float(x_coordinate),
-        "y": float(y_coordinate),
-        "z": float(z_coordinate),
-    }
-
-
-def make_globe(frame: OrbiterFrame | None = None) -> go.Figure:
-    """Build an interactive globe, centred on the frame when one is given."""
-    traces: list[go.Surface | go.Scatter3d] = [_base_sphere()]
-    if frame is None:
-        eye = _camera_eye(22, 35)
-    else:
-        traces += [_frame_patch(frame), _frame_marker(frame)]
-        eye = _camera_eye(frame.latitude, frame.longitude)
-
-    hidden_axis = {"visible": False, "range": [-1.1, 1.1]}
-    figure = go.Figure(traces)
-    figure.update_layout(
-        margin={"l": 0, "r": 0, "t": 0, "b": 0},
-        paper_bgcolor="rgba(0,0,0,0)",
-        showlegend=False,
-        scene={
-            "xaxis": hidden_axis,
-            "yaxis": hidden_axis,
-            "zaxis": hidden_axis,
-            "aspectmode": "cube",
-            "bgcolor": "rgba(0,0,0,0)",
-            "camera": {"eye": eye, "up": {"x": 0, "y": 0, "z": 1}},
-        },
-    )
-    return figure
 
 
 def _metadata_row(label: str, value: str = "—") -> html.Div:
@@ -232,6 +105,10 @@ app.title = "Lunar Orbiter | Atlas"
 app.layout = html.Div(
     [
         dcc.Interval(id="initial-load", interval=500, n_intervals=0, max_intervals=1),
+        dcc.Interval(id="mosaic-poll", interval=1000, disabled=True),
+        dcc.Store(id="selected-frame"),
+        dcc.Store(id="hidden-frames", data=[]),
+        dcc.Store(id="mosaic-count", data=0),
         html.Header(
             [
                 html.Div(
@@ -273,7 +150,8 @@ app.layout = html.Div(
                 html.Section(
                     [
                         html.Div(
-                            "VISTA 3D  /  ARRASTRA PARA ROTAR · RUEDA PARA ACERCAR",
+                            "VISTA 3D  /  ARRASTRA PARA ROTAR · CLICK EN UNA FOTO PARA "
+                            "OCULTARLA",
                             className="globe-label",
                         ),
                         dcc.Graph(
@@ -283,7 +161,7 @@ app.layout = html.Div(
                             config={"displayModeBar": False, "responsive": True},
                         ),
                         html.Div(
-                            "PROYECCIÓN DEL FOTOGRAMA · COBERTURA ESQUEMÁTICA",
+                            "POSICIÓN Y TAMAÑO APROXIMADOS · ORIENTACIÓN NORTE ARRIBA",
                             className="globe-coordinates",
                         ),
                     ],
@@ -313,6 +191,7 @@ app.layout = html.Div(
                                                 }
                                                 for number in range(1, MISSIONS_NUM + 1)
                                             ],
+                                            value=DEFAULT_MISSION,
                                             placeholder="MISIÓN",
                                             clearable=False,
                                             searchable=False,
@@ -325,6 +204,23 @@ app.layout = html.Div(
                                         ),
                                     ],
                                     className="selector-row",
+                                ),
+                                html.Div(
+                                    [
+                                        html.Div(
+                                            "PREPARANDO MOSAICO…",
+                                            id="mosaic-status",
+                                            className="status-line",
+                                        ),
+                                        html.Button(
+                                            "MOSTRAR OCULTAS",
+                                            id="show-hidden",
+                                            n_clicks=0,
+                                            disabled=True,
+                                            className="text-button",
+                                        ),
+                                    ],
+                                    className="mosaic-row",
                                 ),
                                 html.Div(
                                     [
@@ -407,7 +303,7 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("globe", "figure"),
+    Output("selected-frame", "data"),
     Output("preview", "src"),
     Output("metadata", "children"),
     Output("image-link", "href"),
@@ -430,7 +326,7 @@ def update_frame(_clicks: int, _interval: int, frame_id: str):
     image_data = base64.b64encode(frame.image_bytes).decode("ascii")
     status = f"LPI EN LÍNEA · {frame.frame_id} · VISTA PREVIA RECIBIDA"
     return (
-        make_globe(frame),
+        frame.frame_id,
         f"data:image/jpeg;base64,{image_data}",
         metadata_rows(frame),
         frame_url(frame.frame_id),
@@ -438,32 +334,144 @@ def update_frame(_clicks: int, _interval: int, frame_id: str):
     )
 
 
+def _selected_image(frame_id: str | None) -> GlobeImage | None:
+    """Rebuild the selection's texture; the frame itself is in the fetch cache."""
+    if not frame_id:
+        return None
+    try:
+        return globe_image(fetch_frame(frame_id))
+    except (requests.RequestException, ValueError, OSError):
+        return None
+
+
+@app.callback(
+    Output("globe", "figure"),
+    Input("selected-frame", "data"),
+    Input("hidden-frames", "data"),
+    Input("mosaic-count", "data"),
+    Input("mission-select", "value"),
+)
+def render_globe(
+    selected_id: str | None,
+    hidden: list[str] | None,
+    _mosaic_count: int,
+    mission: int | None,
+):
+    tiles = LOADER.progress(mission).tiles.values() if mission else ()
+    return make_globe(_selected_image(selected_id), tiles, set(hidden or ()))
+
+
 @app.callback(
     Output("frame-select", "options"),
     Output("frame-select", "value"),
     Output("frame-select", "disabled"),
     Output("status", "children", allow_duplicate=True),
+    Output("mosaic-poll", "disabled"),
+    Output("mosaic-count", "data"),
+    Output("hidden-frames", "data", allow_duplicate=True),
     Input("mission-select", "value"),
-    prevent_initial_call=True,
+    prevent_initial_call="initial_duplicate",
 )
 def list_mission_frames(mission: int):
     try:
         frame_ids = fetch_mission_frames(mission)
     except requests.RequestException as error:
-        return [], None, True, f"ERROR DE CONEXIÓN · {error}"
+        return [], None, True, f"ERROR DE CONEXIÓN · {error}", True, 0, []
     except ValueError as error:
-        return [], None, True, f"NO SE PUDO CARGAR · {error}"
+        return [], None, True, f"NO SE PUDO CARGAR · {error}", True, 0, []
+    LOADER.start(mission)
     status = f"MISIÓN {mission} · {len(frame_ids)} FOTOGRAMAS"
-    return frame_ids, None, False, status
+    return frame_ids, None, False, status, False, 0, []
+
+
+@app.callback(
+    Output("mosaic-status", "children"),
+    Output("mosaic-count", "data", allow_duplicate=True),
+    Output("mosaic-poll", "disabled", allow_duplicate=True),
+    Input("mosaic-poll", "n_intervals"),
+    State("mission-select", "value"),
+    State("mosaic-count", "data"),
+    prevent_initial_call=True,
+)
+def poll_mosaic(_intervals: int, mission: int | None, rendered: int):
+    if not mission:
+        return no_update, no_update, True
+    progress = LOADER.progress(mission)
+    loaded = len(progress.tiles)
+    if progress.error:
+        return f"MOSAICO NO DISPONIBLE · {progress.error}", no_update, True
+    if progress.finished:
+        failed = f" · {progress.failed} SIN DATOS" if progress.failed else ""
+        count = loaded if loaded != rendered else no_update
+        return f"MOSAICO · {loaded} FOTOS EN LA ESFERA{failed}", count, True
+
+    status = f"DESCARGANDO MOSAICO · {loaded}/{progress.total or '…'}"
+    count = loaded if loaded - rendered >= MOSAIC_RENDER_STEP else no_update
+    return status, count, False
+
+
+@app.callback(
+    Output("hidden-frames", "data"),
+    Output("frame-id", "value", allow_duplicate=True),
+    Input("globe", "clickData"),
+    State("hidden-frames", "data"),
+    State("selected-frame", "data"),
+    State("mission-select", "value"),
+    prevent_initial_call=True,
+)
+def hide_clicked_image(
+    click_data: dict | None,
+    hidden: list[str] | None,
+    selected_id: str | None,
+    mission: int | None,
+):
+    """Hide the clicked photo and show its details in the side panel."""
+    if not click_data or not click_data.get("points"):
+        return no_update, no_update
+    point = click_data["points"][0]
+    if not {"x", "y", "z"} <= point.keys():
+        return no_update, no_update
+
+    hidden = list(hidden or ())
+    tiles = LOADER.progress(mission).tiles.values() if mission else ()
+    images = visible_images(_selected_image(selected_id), tiles, set(hidden))
+    clicked = image_at(images, point["x"], point["y"], point["z"])
+    if clicked is None:
+        return no_update, no_update
+    return [*hidden, clicked.frame_id], clicked.frame_id
+
+
+@app.callback(
+    Output("show-hidden", "children"),
+    Output("show-hidden", "disabled"),
+    Input("hidden-frames", "data"),
+)
+def describe_hidden(hidden: list[str] | None):
+    count = len(hidden or ())
+    return f"MOSTRAR OCULTAS ({count})", count == 0
+
+
+@app.callback(
+    Output("hidden-frames", "data", allow_duplicate=True),
+    Input("show-hidden", "n_clicks"),
+    prevent_initial_call=True,
+)
+def show_hidden(_clicks: int):
+    return []
 
 
 @app.callback(
     Output("frame-id", "value"),
+    Output("hidden-frames", "data", allow_duplicate=True),
     Input("frame-select", "value"),
+    State("hidden-frames", "data"),
     prevent_initial_call=True,
 )
-def select_frame(frame_id: str | None):
-    return frame_id or no_update
+def select_frame(frame_id: str | None, hidden: list[str] | None):
+    """Load the chosen frame and make it visible again if it was hidden."""
+    if not frame_id:
+        return no_update, no_update
+    return frame_id, [value for value in hidden or () if value != frame_id]
 
 
 if __name__ == "__main__":
