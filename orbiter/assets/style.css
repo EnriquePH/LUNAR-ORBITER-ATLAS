@@ -1,6 +1,6 @@
 /* Styles for the Lunar Orbiter Dash app; Dash serves this folder. */
 * { box-sizing: border-box; }
-body { margin: 0; background: #101112; color: #e6e3dd; font-family: 'Manrope', sans-serif; }
+body { margin: 0; background: #101112; color: #e6e3dd; font-family: 'DM Mono', monospace; }
 button, input { font: inherit; }
 .app-shell { max-width: 1600px; margin: 0 auto; padding: 26px 42px 20px; }
 .topbar { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333537; padding: 0 0 18px; }
@@ -10,7 +10,7 @@ button, input { font: inherit; }
 .top-meta { font: 10px 'DM Mono',monospace; color:#aaa7a0; letter-spacing:.7px; }
 .page-title { display:flex; justify-content:space-between; align-items:end; padding:26px 0 16px; }
 .eyebrow,.section-kicker { font:10px 'DM Mono',monospace; color:#ff8a61; letter-spacing:1.2px; text-transform:uppercase; }
-h1 { margin:5px 0 0; font:600 42px 'Newsreader',serif; letter-spacing:0; }
+h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
 .title-note { max-width:310px; color:#aaa7a0; font-size:12px; line-height:1.6; text-align:right; }
 .atlas-layout { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:26px; min-height:590px; border-top:1px solid #333537; border-bottom:1px solid #333537; }
 .globe-panel { position:relative; min-width:0; min-height:590px; overflow:hidden; background:radial-gradient(ellipse at 50% 53%,#252626 0,#151617 45%,#101112 75%); }
@@ -18,7 +18,7 @@ h1 { margin:5px 0 0; font:600 42px 'Newsreader',serif; letter-spacing:0; }
 .globe-coordinates { position:absolute; right:20px; bottom:17px; z-index:2; font:10px 'DM Mono',monospace; color:#777973; pointer-events:none; }
 .globe-render { width:100%; height:590px; }
 .side-panel { border-left:1px solid #333537; padding:22px 0 22px 24px; display:flex; flex-direction:column; gap:18px; }
-.side-heading { margin:0; font:500 21px 'Newsreader',serif; }
+.side-heading { margin:0; font:500 19px 'DM Mono',monospace; }
 .control-row { display:flex; gap:8px; }
 .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
 .side-panel {
@@ -32,7 +32,7 @@ h1 { margin:5px 0 0; font:600 42px 'Newsreader',serif; letter-spacing:0; }
 .selector-row .dash-dropdown, .dash-dropdown-content { font:11px 'DM Mono',monospace; }
 .selector-row .dash-dropdown-focus-target { width:100% !important; }
 .frame-input { width:100%; min-width:0; background:#181a1b; border:1px solid #4a4c4d; color:#e6e3dd; border-radius:2px; padding:11px 12px; font:12px 'DM Mono',monospace; }
-.load-button { white-space:nowrap; border:0; border-radius:2px; padding:0 13px; color:#141414; background:#ff7547; font-size:11px; font-weight:700; cursor:pointer; }
+.load-button { white-space:nowrap; border:0; border-radius:2px; padding:0 13px; color:#141414; background:#ff7547; font-size:11px; font-weight:500; cursor:pointer; }
 .load-button:hover { background:#ff946f; }
 .status-line { min-height:15px; color:#a6a49d; font:9px 'DM Mono',monospace; letter-spacing:.4px; }
 .preview-frame { height:224px; display:flex; align-items:center; justify-content:center; background:#090a0b; border:1px solid #333537; overflow:hidden; }
@@ -58,7 +58,7 @@ h1 { margin:5px 0 0; font:600 42px 'Newsreader',serif; letter-spacing:0; }
 @media(max-width:560px) {
     .app-shell { padding:14px 14px 18px; }
     .top-meta,.title-note { display:none; }
-    h1 { font-size:35px; }
+    h1 { font-size:28px; }
     .globe-panel { min-height:360px; }
     .globe-render { height:360px; min-height:360px; }
     .side-panel { display:flex; }
@@ -89,8 +89,8 @@ h1 { margin:5px 0 0; font:600 42px 'Newsreader',serif; letter-spacing:0; }
 .reference-intro { max-width:880px; }
 .reference-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:26px 32px; }
 .reference-card { min-width:0; }
-.reference-heading { margin:0 0 10px; font:500 17px 'Newsreader',serif; color:#e6e3dd; }
-.summary-list { margin:14px 0 0; padding-left:18px; color:#cfccc5; font-size:14px; line-height:1.7; }
+.reference-heading { margin:0 0 10px; font:500 15px 'DM Mono',monospace; color:#e6e3dd; }
+.summary-list { margin:14px 0 0; padding-left:18px; color:#cfccc5; font-size:13px; line-height:1.75; }
 .summary-list li { margin-bottom:6px; }
 .source-note { margin:14px 0 0; color:#777973; font:10px 'DM Mono',monospace; letter-spacing:.3px; }
 .source-note a { color:#ff8a61; }

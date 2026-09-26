@@ -25,6 +25,8 @@
       contratos de `config.py` e `i18n.py` (y `port: true` ahora se rechaza);
       caché del mosaico documentada (no caduca; borrar `data/lpi` para recargar);
       `urls.py` construye sin validar; Ruff `D` con convención Google.
+- [x] Idioma recordado entre visitas (`localStorage`) y atributo `lang` del HTML.
+- [x] Tipografía única: DM Mono en toda la app (antes Manrope y Newsreader).
 
 ## Pendiente
 
@@ -36,5 +38,3 @@
 - [ ] Revisar con datos reales la aproximación del tamaño de cada foto
       (`FOOTPRINT_PER_ALTITUDE`), que asume toma vertical; las oblicuas quedan
       deformadas.
-- [ ] Opcional: recordar el idioma elegido entre visitas y fijar el atributo `lang`
-      del documento HTML.

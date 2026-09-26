@@ -110,10 +110,9 @@ def metadata_rows(frame: OrbiterFrame, lang: str = "es") -> list[html.Div]:
     ]
 
 
+# DM Mono is the only typeface in the app (text, headings and the globe).
 FONTS_URL = (
-    "https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500"
-    "&family=Manrope:wght@400;500;600;700"
-    "&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap"
+    "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap"
 )
 
 # Pages are built by a callback, so their component IDs are not in the
@@ -372,9 +371,55 @@ def serve_layout(lang: str) -> html.Div:
     )
 
 
-app.layout = html.Div([dcc.Location(id="url"), html.Div(id="page")])
-app.validation_layout = html.Div(
-    [dcc.Location(id="url"), html.Div(id="page"), serve_layout(CONFIG.language)]
+# refresh=False: restoring the saved language rewrites ?lang= without a reload.
+ROOT = [
+    dcc.Location(id="url", refresh=False),
+    dcc.Store(id="lang-saved"),
+    html.Div(id="page"),
+]
+app.layout = html.Div(ROOT)
+app.validation_layout = html.Div([*ROOT, serve_layout(CONFIG.language)])
+
+
+LANGUAGE_STORAGE_KEY = "lunar-orbiter-lang"
+
+# Browser-side language memory. Storage can be unavailable (private windows,
+# blocked site data), so every access is guarded and the app works without it.
+app.clientside_callback(
+    f"""
+    function (lang) {{
+        document.documentElement.lang = lang;
+        try {{
+            if (new URLSearchParams(window.location.search).has("lang")) {{
+                window.localStorage.setItem("{LANGUAGE_STORAGE_KEY}", lang);
+            }}
+        }} catch (error) {{}}
+        return lang;
+    }}
+    """,
+    Output("lang-saved", "data"),
+    Input("lang", "data"),
+)
+app.clientside_callback(
+    f"""
+    function (search) {{
+        const params = new URLSearchParams(search || "");
+        if (params.has("lang")) {{
+            return window.dash_clientside.no_update;
+        }}
+        let saved = null;
+        try {{
+            saved = window.localStorage.getItem("{LANGUAGE_STORAGE_KEY}");
+        }} catch (error) {{}}
+        if (!{list(LANGUAGES)!r}.includes(saved)) {{
+            return window.dash_clientside.no_update;
+        }}
+        params.set("lang", saved);
+        return "?" + params.toString();
+    }}
+    """,
+    Output("url", "search"),
+    Input("url", "search"),
 )
 
 

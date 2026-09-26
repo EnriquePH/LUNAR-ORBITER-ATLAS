@@ -25,6 +25,8 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   `render_page` monta `serve_layout(lang)` según `?lang=` (el layout no puede leer la
   query: Dash lo pide por `/_dash-layout`). Por eso `suppress_callback_exceptions=True`
   y `app.validation_layout`. El idioma viaja en `dcc.Store("lang")` como `State`.
+  Dos callbacks clientside guardan la elección en `localStorage` y la recuperan
+  si se entra sin `?lang=`; también fijan `<html lang>`.
   Callbacks: `update_frame` (5 salidas), `render_globe`, `list_mission_frames` (arranca
   el `LOADER`), `poll_mosaic` (Interval), `hide_clicked_image`, `show_hidden`,
   `describe_hidden`, `select_frame`. Se prueban llamándolos directamente.
@@ -43,7 +45,8 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - `orbiter/i18n.py` — todos los textos de la UI en `TEXTS["es"|"en"]`; `t(lang, key)`.
 - `orbiter/reference.py` — pestañas «La Luna» y «Programa Lunar Orbiter»
   (`CONTENT["es"|"en"]`), texto CC BY-SA 4.0 resumido de Wikipedia.
-- `orbiter/assets/style.css` — todo el CSS. Desplegables de Dash 4 tematizados con
+- `orbiter/assets/style.css` — todo el CSS. **Única fuente: DM Mono** (pesos 300–500,
+  sin 600/700), también en la figura de Plotly. Desplegables de Dash 4 tematizados con
   variables `--Dash-*`; su menú abierto va en un portal fuera de `.side-panel`.
 - `scripts/run.sh` — crea `.venv` si falta y para una instancia previa del visor
   que ocupe el puerto (nunca otros programas).

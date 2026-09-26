@@ -390,6 +390,7 @@ def make_globe(
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         paper_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
+        font={"family": "DM Mono, monospace"},
         hoverlabel={
             "bgcolor": "#181a1b",
             "bordercolor": ACCENT,
