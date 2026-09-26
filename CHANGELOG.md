@@ -17,8 +17,12 @@ First release.
   with the horizon, high-altitude frames turned to match their black sky.
 - Frame IDs labelled at the centre of each photo, with the selected one in
   orange; a **Labels** switch hides them and is remembered.
-- Rotation slows down as you zoom in, and the zoom stops just above the
-  surface, so photos stay easy to pick up close.
+- Rotation and zoom slow down near the surface, and the camera can come down
+  to about 17 km above it, so photos stay easy to pick up close. The view
+  stays put when switching tabs.
+- Clicking selects exactly the photo named in the hover label, also where
+  photos overlap.
+- The logo opens the project page and a **GitHub** link the repository.
 - Click a photo, pick one from the selector, type its ID or press **Random**
   to show it in the side panel. A click leaves the view as it is; the other
   ways turn the globe to the photo and keep the zoom.

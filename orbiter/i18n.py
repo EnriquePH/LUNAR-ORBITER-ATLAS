@@ -13,6 +13,9 @@ TEXTS: dict[str, dict[str, str]] = {
         "html_lang": "es",
         "brand_subtitle": "ARCHIVO FOTOGRÁFICO / ATLAS DE CAMPO",
         "top_meta": "ARCHIVO DIGITAL LPI · VISOR LOCAL",
+        "project_page_title": "Página del proyecto",
+        "repository_link": "GITHUB ↗",
+        "repository_title": "Código fuente en GitHub",
         "eyebrow": "EXPLORACIÓN FOTOGRÁFICA · 1966—1967",
         "title": "Atlas orbital lunar",
         "title_note": (
@@ -93,6 +96,9 @@ TEXTS: dict[str, dict[str, str]] = {
         "html_lang": "en",
         "brand_subtitle": "PHOTO ARCHIVE / FIELD ATLAS",
         "top_meta": "LPI DIGITAL ARCHIVE · LOCAL VIEWER",
+        "project_page_title": "Project page",
+        "repository_link": "GITHUB ↗",
+        "repository_title": "Source code on GitHub",
         "eyebrow": "PHOTOGRAPHIC SURVEY · 1966—1967",
         "title": "Lunar orbital atlas",
         "title_note": (

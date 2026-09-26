@@ -90,6 +90,13 @@
 - [x] La vista ya no salta al hacer click en una foto: `uirevision` fijo y la
       cámara del usuario se reenvía en cada redibujado. Elegir una foto por
       otra vía (selector, ID, al azar) gira hacia ella manteniendo el zoom.
+- [x] La vista se conserva al cambiar de pestaña (la cámara se parchea en la
+      figura con `Patch`).
+- [x] Zoom hasta ~17 km sobre la superficie (1,01 radios) con plano de recorte
+      cercano reducido; corregido el radio usado por `rotation.js` (0,4, no 0,495).
+- [x] El click selecciona la foto del hover (`customdata` del mosaico como lista:
+      Dash lo relee de la figura por índice y fallaba con el array binario).
+- [x] Logo de la app enlazado a la web del proyecto y enlace «GITHUB ↗» al repo.
 - [x] Release 1.0.0: versión en `pyproject.toml`, `CITATION.cff`, README y
       User-Agent; `CHANGELOG.md`; capturas de la web regeneradas; tag `v1.0.0`.
 

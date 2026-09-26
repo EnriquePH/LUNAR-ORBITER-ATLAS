@@ -3,7 +3,7 @@ from io import BytesIO
 import numpy as np
 import pytest
 import requests
-from dash import no_update
+from dash import Patch, no_update
 from PIL import Image
 
 from orbiter import app as app_module
@@ -234,25 +234,37 @@ def test_click_selects_the_photo_without_hiding_it(monkeypatch):
     tiles = {"1100": _tile("1100", -40, -120)}
     monkeypatch.setattr(app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles)))
     x, y, z = selenographic_to_cartesian(-40.2, -120.1, 1.003)
-    click = {"points": [{"x": x, "y": y, "z": z, "curveNumber": 1}]}
+    click = {"points": [{"x": x, "y": y, "z": z, "curveNumber": 1, "customdata": 1100}]}
 
-    assert select_clicked_image(click, "1041", 1) == ("1100", "1100")
+    assert select_clicked_image(click, "1041") == ("1100", "1100")
     figure, *_ = render_globe("1041", 1, 1)
     mesh = next(trace for trace in figure.data if trace.type == "mesh3d")
     assert 1100 in set(np.asarray(mesh.customdata))
 
 
-def test_click_ignores_empty_space_and_the_current_selection(monkeypatch, loader):
-    monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
-    x, y, z = selenographic_to_cartesian(-60, 150)
-    empty = {"points": [{"x": x, "y": y, "z": z}]}
-    x, y, z = selenographic_to_cartesian(3.3, 39.15, 1.006)
-    on_selection = {"points": [{"x": x, "y": y, "z": z}]}
+def test_click_selects_the_photo_named_in_the_hover_label():
+    # Overlapping photos: the point may lie nearer another photo's centre,
+    # but the one under the cursor is the one whose ID the vertex carries.
+    x, y, z = selenographic_to_cartesian(3.3, 39.15, 1.003)
+    click = {"points": [{"x": x, "y": y, "z": z, "customdata": 1042}]}
 
+    assert select_clicked_image(click, "1041") == ("1042", "1042")
+    listed = {"points": [{"customdata": [1043]}]}
+    assert select_clicked_image(listed, "1041") == ("1043", "1043")
+
+
+def test_click_ignores_the_selection_and_points_without_a_frame():
     unchanged = (no_update, no_update)
-    assert select_clicked_image(empty, "1041", 1) == unchanged
-    assert select_clicked_image(None, "1041", 1) == unchanged
-    assert select_clicked_image(on_selection, "1041", 1) == unchanged
+    x, y, z = selenographic_to_cartesian(3.3, 39.15, 1.006)
+    # The selected photo is drawn apart and carries no customdata.
+    assert select_clicked_image({"points": [{"x": x, "y": y, "z": z}]}, "1041") == (
+        unchanged
+    )
+    assert select_clicked_image({"points": [{"customdata": 1041}]}, "1041") == (
+        unchanged
+    )
+    assert select_clicked_image({"points": []}, "1041") == unchanged
+    assert select_clicked_image(None, "1041") == unchanged
 
 
 def test_select_frame_loads_the_chosen_frame():
@@ -450,6 +462,19 @@ def test_render_globe_keeps_the_view_while_tiles_arrive(monkeypatch, loader):
 
 
 def test_remember_camera_keeps_only_whole_camera_updates():
-    assert remember_camera({"scene.camera": FAR_SIDE}) == FAR_SIDE
-    assert remember_camera({"autosize": True}) is no_update
-    assert remember_camera(None) is no_update
+    camera, figure = remember_camera({"scene.camera": FAR_SIDE})
+
+    assert camera == FAR_SIDE
+    # The figure keeps the view too, for when the graph is mounted again.
+    assert isinstance(figure, Patch)
+    assert "camera" in str(figure.to_plotly_json())
+    unchanged = (no_update, no_update)
+    assert remember_camera({"autosize": True}) == unchanged
+    assert remember_camera(None) == unchanged
+
+
+def test_header_links_to_the_project_page_and_the_repository():
+    page = str(serve_layout("en"))
+
+    assert "https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/" in page
+    assert "https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS" in page

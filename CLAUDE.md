@@ -56,8 +56,9 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   fotos: si cambias estas reglas, superpón el cielo predicho sobre las miniaturas
   (p. ej. 5038, 5041, 1102, 2034, 4114) y compruébalo a ojo.
   Plotly colorea por vértice (1 píxel = 1 vértice): `tile_textures` reparte la
-  resolución con un tope de `MESH_VERTEX_BUDGET`. El click se resuelve por geometría
-  (`patch_contains` → `FrameCamera.sees`), no por índices de traza.
+  resolución con un tope de `MESH_VERTEX_BUDGET`. El click selecciona la foto
+  del hover: el `customdata` (ID por vértice) del `Mesh3d`, que va como
+  **lista** y no binario, porque Dash lo relee de la figura por índice. `image_at`/`patch_contains` (geometría) quedan como API pública.
   `frame_geometry` (huella en km, emisión implícita) y `footprint_outline`
   buscan el limbo por bisección desde el punto principal (`_border_distances`):
   cerca del limbo la proyección es singular y una rejilla se queda corta.
@@ -75,8 +76,10 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - `orbiter/reference.py` — pestañas «La Luna» y «Programa Lunar Orbiter»
   (`CONTENT["es"|"en"]`), texto CC BY-SA 4.0 resumido de Wikipedia.
 - `orbiter/assets/rotation.js` — antes de que Plotly procese un click o la rueda
-  en el globo, escala `camera.rotateSpeed` con la altura sobre la superficie y
-  limita el zoom (`view.setDistanceLimits`) para no atravesar la Luna. Usa
+  en el globo, escala `rotateSpeed` y `zoomSpeed` con la altura sobre la
+  superficie, limita el zoom a 1,01 radios (`view.setDistanceLimits`) y acerca el
+  plano de recorte (`glplot.zNear`). Radio en unidades de cámara =
+  `aspectratio / rango del eje` (0,4), no `dataScale`. Usa
   internos de Plotly (`_fullLayout.scene._scene`): revísalo si se actualiza.
 - `orbiter/assets/style.css` — todo el CSS. **Única fuente: DM Mono** (pesos 300–500,
   sin 600/700), también en la figura de Plotly. Desplegables de Dash 4 tematizados con

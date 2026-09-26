@@ -155,6 +155,9 @@ def test_make_globe_draws_tiles_selection_and_marker():
     assert len(mosaic.x) == 19 * 14
     assert len(mosaic.i) == 2 * 18 * 13
     assert np.asarray(mosaic.intensity).dtype == np.uint8
+    # Dash looks up a clicked point's customdata by index: it must be a list.
+    serialized = figure.to_plotly_json()["data"][1]
+    assert isinstance(serialized["customdata"], (list, tuple))
     assert int(np.max(mosaic.i)) < len(mosaic.x)
     assert selected.name == "1041"
     assert figure.data[-1].marker.color == ACCENT

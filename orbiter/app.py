@@ -9,7 +9,7 @@ from urllib.parse import parse_qs
 
 import numpy as np
 import requests
-from dash import Dash, Input, Output, State, dcc, html, no_update
+from dash import Dash, Input, Output, Patch, State, dcc, html, no_update
 from PIL import Image
 
 from orbiter.catalog import MissionLoader, TileStore, default_cache_dir
@@ -25,9 +25,7 @@ from orbiter.globe import (
     focus_camera,
     format_coordinates,
     frame_geometry,
-    image_at,
     make_globe,
-    visible_images,
 )
 from orbiter.i18n import LANGUAGES, normalize_language, t
 from orbiter.lpi import (
@@ -41,6 +39,8 @@ from orbiter.reference import moon_tab, program_tab
 from orbiter.urls import MISSIONS_NUM, frame_url
 
 DEFAULT_FRAME_ID = "1041"
+PROJECT_PAGE_URL = "https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/"
+REPOSITORY_URL = "https://github.com/EnriquePH/LUNAR-ORBITER-ATLAS"
 DEFAULT_MISSION = 1
 TEXTURE_SIZE = (256, 256)
 # Re-render the globe after this many new tiles while a mission is loading.
@@ -433,7 +433,7 @@ def serve_layout(lang: str) -> html.Div:
             dcc.Store(id="mosaic-count", data=0),
             html.Header(
                 [
-                    html.Div(
+                    html.A(
                         [
                             html.Img(
                                 src=app.get_asset_url("icon.png"),
@@ -445,11 +445,23 @@ def serve_layout(lang: str) -> html.Div:
                                 className="brand-copy",
                             ),
                         ],
+                        href=PROJECT_PAGE_URL,
+                        target="_blank",
+                        rel="noreferrer",
+                        title=t(lang, "project_page_title"),
                         className="wordmark",
                     ),
                     html.Div(
                         [
                             html.Div(t(lang, "top_meta"), className="top-meta"),
+                            html.A(
+                                t(lang, "repository_link"),
+                                href=REPOSITORY_URL,
+                                target="_blank",
+                                rel="noreferrer",
+                                title=t(lang, "repository_title"),
+                                className="repo-link",
+                            ),
                             _language_switch(lang),
                         ],
                         className="topbar-end",
@@ -678,13 +690,23 @@ def render_globe(
 
 @app.callback(
     Output("globe-camera", "data"),
+    Output("globe", "figure", allow_duplicate=True),
     Input("globe", "relayoutData"),
     prevent_initial_call=True,
 )
 def remember_camera(relayout: dict | None):
-    """Keep the view the user rotated or zoomed to."""
+    """Keep the view the user rotated or zoomed to.
+
+    The camera is stored for :func:`render_globe` and patched into the figure
+    itself: switching tabs unmounts the graph, which comes back from its
+    ``figure`` and would otherwise reopen at an old view.
+    """
     camera = (relayout or {}).get("scene.camera")
-    return camera if camera_distance(camera) else no_update
+    if not camera_distance(camera):
+        return no_update, no_update
+    figure = Patch()
+    figure["layout"]["scene"]["camera"] = camera
+    return camera, figure
 
 
 @app.callback(
@@ -749,33 +771,38 @@ def poll_mosaic(_intervals: int, mission: int | None, rendered: int, lang="es"):
     return status, count, False
 
 
+def _clicked_frame_id(point: dict) -> str | None:
+    """Frame ID carried by a clicked mosaic vertex, as its hover label shows it."""
+    frame = point.get("customdata")
+    if isinstance(frame, list):
+        frame = frame[0] if frame else None
+    try:
+        return str(int(frame))
+    except (TypeError, ValueError):
+        return None
+
+
 @app.callback(
     Output("frame-id", "value", allow_duplicate=True),
     Output("clicked-frame", "data"),
     Input("globe", "clickData"),
     State("selected-frame", "data"),
-    State("mission-select", "value"),
     prevent_initial_call=True,
 )
-def select_clicked_image(
-    click_data: dict | None, selected_id: str | None, mission: int | None
-):
+def select_clicked_image(click_data: dict | None, selected_id: str | None):
     """Show the clicked photo's details in the side panel; it stays on the globe.
 
-    Also records the photo as clicked, so the view does not move to it.
+    The photo is the one under the cursor, identified like its hover label by
+    the frame ID each mosaic vertex carries (``customdata``), so overlapping
+    photos resolve to the one on top. Clicks on the selected photo, which has
+    no ``customdata``, or off the photos change nothing. Also records the
+    photo as clicked, so the view does not move to it.
     """
-    if not click_data or not click_data.get("points"):
+    points = (click_data or {}).get("points") or [{}]
+    frame_id = _clicked_frame_id(points[0])
+    if frame_id is None or frame_id == selected_id:
         return no_update, no_update
-    point = click_data["points"][0]
-    if not {"x", "y", "z"} <= point.keys():
-        return no_update, no_update
-
-    tiles = LOADER.progress(mission).tiles.values() if mission else ()
-    images = visible_images(_selected_image(selected_id), tiles, ())
-    clicked = image_at(images, point["x"], point["y"], point["z"])
-    if clicked is None or clicked.frame_id == selected_id:
-        return no_update, no_update
-    return clicked.frame_id, clicked.frame_id
+    return frame_id, frame_id
 
 
 @app.callback(

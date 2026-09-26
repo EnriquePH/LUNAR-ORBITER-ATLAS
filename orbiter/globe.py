@@ -78,7 +78,8 @@ SELECTED_RADIUS = 1.006
 CAMERA_DISTANCE = 1.6
 REFERENCE_COLOR = "#8fb3c9"
 # Frame IDs float just above the tiles, at each photo's principal point.
-LABEL_RADIUS = 1.012
+LABEL_RADIUS = 1.008
+MARKER_RADIUS = 1.009
 LABEL_COLOR = "#ffd9c9"
 SELECTED_LABEL_COLOR = ACCENT
 # Pole labels sit just outside the sphere; the axis range must include them.
@@ -730,9 +731,10 @@ def tile_textures(tiles: list[GlobeImage]) -> list[np.ndarray]:
 def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
     """Merge every tile into one mesh: one WebGL draw call instead of hundreds.
 
-    Frame IDs travel as per-vertex ``int16`` ``customdata`` and brightness as
-    ``uint8`` intensity; Plotly sends both in binary, which keeps the payload
-    small while still labelling each photo on hover.
+    Brightness travels as ``uint8`` intensity, which Plotly sends in binary.
+    Frame IDs are per-vertex ``customdata`` for the hover label and clicks;
+    they go as a plain list, because Dash reads a clicked point's
+    ``customdata`` back from the figure by index, which fails on binary arrays.
     """
     coordinates, intensities, triangles, frame_ids = [], [], [], []
     offset = 0
@@ -769,7 +771,7 @@ def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
         cmin=0,
         cmax=255,
         showscale=False,
-        customdata=np.concatenate(frame_ids),
+        customdata=np.concatenate(frame_ids).tolist(),
         hovertemplate="%{customdata}<extra></extra>",
         flatshading=False,
         lighting={"ambient": 0.8, "diffuse": 0.4, "specular": 0.0},
@@ -926,7 +928,7 @@ def _frame_labels(
 def _marker(image: GlobeImage) -> go.Scatter3d:
     """Accent dot on the selection; its label is in :func:`_frame_labels`."""
     x_coordinate, y_coordinate, z_coordinate = selenographic_to_cartesian(
-        image.latitude, image.longitude, 1.02
+        image.latitude, image.longitude, MARKER_RADIUS
     )
     return go.Scatter3d(
         x=[x_coordinate],
