@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -33,7 +34,7 @@ from PIL import Image
 
 from orbiter.globe import MAX_TILE_PIXELS, GlobeImage, camera_of
 from orbiter.lpi import USER_AGENT, fetch_mission_frames, parse_frame_page
-from orbiter.urls import ORBITER_URL, frame_url
+from orbiter.urls import MISSIONS_NUM, ORBITER_URL, frame_url
 
 REQUEST_DELAY_SECONDS = 0.25
 DOWNLOAD_WORKERS = 3
@@ -248,3 +249,47 @@ class MissionLoader:
             list(executor.map(load, frame_ids))
         with self._lock:
             progress.finished = True
+
+
+def download(missions: list[int], poll_seconds: float = 2.0) -> int:
+    """Fill the disk cache for ``missions`` and print progress.
+
+    Already cached frames are read from disk, so running it again is cheap.
+    Live progress is only shown on a terminal; logs get one line per mission.
+
+    Returns:
+        The number of frames that could not be loaded (0 when all succeed).
+    """
+    loader = MissionLoader(TileStore(default_cache_dir()))
+    live = sys.stdout.isatty()
+    failed = 0
+    for mission in missions:
+        loader.start(mission)
+        while not (progress := loader.progress(mission)).finished:
+            if live:
+                loaded, total = len(progress.tiles), progress.total or "…"
+                print(f"\rMission {mission}: {loaded}/{total}", end="", flush=True)
+            time.sleep(poll_seconds)
+        prefix = "\r" if live else ""
+        if progress.error is not None:
+            print(f"{prefix}Mission {mission}: listing failed: {progress.error}")
+            failed += 1
+            continue
+        extra = f", {progress.failed} failed" if progress.failed else ""
+        loaded, total = len(progress.tiles), progress.total
+        print(f"{prefix}Mission {mission}: {loaded}/{total} frames{extra}")
+        failed += progress.failed
+    return failed
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Command line: ``python -m orbiter.catalog [MISSION ...]`` (default: all)."""
+    arguments = sys.argv[1:] if argv is None else argv
+    missions = [int(argument) for argument in arguments] or list(
+        range(1, MISSIONS_NUM + 1)
+    )
+    return 1 if download(missions) else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

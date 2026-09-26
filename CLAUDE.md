@@ -13,6 +13,10 @@ Usa el `Makefile` (envuelve `.venv`, Python 3.14 local; el proyecto declara >=3.
 ```bash
 make install   # .venv + pip install -e ".[dev]"
 make run       # scripts/run.sh: arranca en host/puerto de config.json (8050)
+make stop      # scripts/run.sh --stop: para solo el visor de ese puerto
+make download  # precarga data/lpi (python -m orbiter.catalog; MISSIONS="1 4")
+make site      # sirve site/ en http://127.0.0.1:8765/
+make lint-md   # pymarkdownlnt vía uvx (sin MD013)
 make check     # ruff check + ruff format --check + pytest (lo mismo que la CI)
 make format    # ruff --fix + ruff format (obligatorio antes de commit)
 ```

@@ -58,6 +58,9 @@
 - [x] El click en una foto ya no la oculta: solo la selecciona y muestra sus datos
       (se retiran «Mostrar ocultas» y el estado de fotos ocultas).
 
+- [x] Makefile: `stop`, `download` (precarga de fotos), `site` (web en local) y
+      `lint-md`.
+
 ## Pendiente
 
 - (nada abierto)

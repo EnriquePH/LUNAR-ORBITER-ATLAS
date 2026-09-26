@@ -59,7 +59,9 @@ Requires Python 3.10 or later, on Linux or macOS.
 
 ```bash
 make install   # create .venv and install the app with dev tools
+make download  # optional: fetch all 890 photos now (MISSIONS="1 4" to limit)
 make run       # start the app
+make stop      # stop it
 ```
 
 Then open <http://127.0.0.1:8050/>. `make run` calls `scripts/run.sh`, which
@@ -119,6 +121,8 @@ make test     # pytest
 make lint     # Ruff lint and format check
 make format   # apply Ruff fixes and formatting
 make check    # lint + test
+make lint-md  # lint the Markdown files (needs uv)
+make site     # serve the project page on http://127.0.0.1:8765/
 make icons    # build favicon and icons from assets/icon.png and logo.png
 make help     # list all targets
 ```

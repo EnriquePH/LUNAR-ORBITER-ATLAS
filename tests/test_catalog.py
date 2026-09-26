@@ -7,7 +7,14 @@ import pytest
 import requests
 from PIL import Image
 
-from orbiter.catalog import TILE_SIZE, MissionLoader, TileStore, thumbnail_url
+from orbiter.catalog import (
+    TILE_SIZE,
+    MissionLoader,
+    TileStore,
+    download,
+    main,
+    thumbnail_url,
+)
 
 FRAME_PAGE = """
 Mission: Lunar Orbiter 1 Spacecraft Position: Altitude: 256.43 km
@@ -119,3 +126,29 @@ def test_mission_loader_reports_listing_error_and_allows_retry(store, monkeypatc
     monkeypatch.setattr("orbiter.catalog.fetch_mission_frames", lambda m: ["2001"])
     loader.start(2)
     assert sorted(_wait_until_finished(loader, 2).tiles) == ["2001"]
+
+
+def test_download_fills_the_cache_and_reports_failures(
+    tmp_path, session, monkeypatch, capsys
+):
+    session.fail_ids = {"1006"}
+    monkeypatch.setattr(
+        "orbiter.catalog.fetch_mission_frames", lambda m: ["1005", "1006"]
+    )
+    monkeypatch.setattr(
+        "orbiter.catalog.TileStore",
+        lambda cache_dir: TileStore(tmp_path, delay=0, session_factory=lambda: session),
+    )
+
+    assert download([1], poll_seconds=0.01) == 1
+    assert (tmp_path / "frames" / "1005.json").exists()
+    assert "Mission 1: 1/2 frames, 1 failed" in capsys.readouterr().out
+
+
+def test_main_downloads_all_missions_by_default(monkeypatch):
+    calls = []
+    monkeypatch.setattr("orbiter.catalog.download", lambda m: calls.append(m) or 0)
+
+    assert main([]) == 0
+    assert main(["2", "4"]) == 0
+    assert calls == [[1, 2, 3, 4, 5], [2, 4]]
