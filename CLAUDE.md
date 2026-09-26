@@ -35,6 +35,10 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   más resolución, marcador, ecuador y polos N/S (`hoverinfo="skip"` para que no roben
   clicks). Tamaño de cada foto según la altitud de la nave (`patch_width_degrees`).
   El click se resuelve por geometría (`image_at`), no por índices de traza.
+  Plotly colorea por vértice (1 píxel = 1 vértice): `tile_textures` reparte la
+  resolución según el tamaño de cada foto con un tope de `MESH_VERTEX_BUDGET`;
+  `TileStore` guarda miniaturas de hasta `MAX_TILE_PIXELS`. Mide el coste (tamaño
+  de `fig.to_json()` y `Plotly.react`) antes de subir esos límites.
 - `orbiter/catalog.py` — `MissionLoader` descarga en hilos todas las fotos de una
   misión; `TileStore` cachea página+miniatura en `data/lpi/` (escritura atómica,
   sin caducidad: se recarga borrando la carpeta), 3 workers con un límite
@@ -83,3 +87,6 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   no escribe en `/tmp`, usa `outputs/`). Para parar la app usa `make run` (para la
   anterior) o `pgrep -f "python -m orbiter[.]app"`: con `pkill -f orbiter.app` el
   patrón coincide con el propio shell y lo mata.
+- En Chromium headless (render por software) los clicks 3D de Plotly fallan a veces:
+  tras mover el ratón espera ~1 s y comprueba que el click se registró antes de
+  medir tiempos.

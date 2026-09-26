@@ -31,13 +31,14 @@ import numpy as np
 import requests
 from PIL import Image
 
-from orbiter.globe import GlobeImage
+from orbiter.globe import MAX_TILE_PIXELS, GlobeImage
 from orbiter.lpi import USER_AGENT, fetch_mission_frames, parse_frame_page
 from orbiter.urls import ORBITER_URL, frame_url
 
 REQUEST_DELAY_SECONDS = 0.25
 DOWNLOAD_WORKERS = 3
-TILE_SIZE = (20, 20)
+# Stored at the largest size the globe may use; it downsizes per tile.
+TILE_SIZE = (MAX_TILE_PIXELS, MAX_TILE_PIXELS)
 
 
 def default_cache_dir() -> Path:

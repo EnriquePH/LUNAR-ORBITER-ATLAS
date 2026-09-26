@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
+from PIL import Image
 
 ACCENT = "#ff7547"
 BASE_SURFACE_VALUE = 112.0
@@ -38,6 +39,13 @@ REFERENCE_COLOR = "#8fb3c9"
 # Pole labels sit just outside the sphere; the axis range must include them.
 POLE_LABEL_HEIGHT = 1.18
 AXIS_LIMIT = 1.25
+# Plotly colours meshes per vertex, so every texture pixel is a vertex. Tiles get
+# pixels in proportion to their size on the globe, within these bounds, and the
+# whole mosaic is scaled down to stay under the vertex budget.
+TILE_PIXELS_PER_DEGREE = 3.0
+MIN_TILE_PIXELS = 10
+MAX_TILE_PIXELS = 48
+MESH_VERTEX_BUDGET = 90_000
 GRAY_SCALE = [[0.0, "#000000"], [1.0, "#ffffff"]]
 NO_CONTOURS = {axis: {"highlight": False} for axis in ("x", "y", "z")}
 
@@ -236,22 +244,70 @@ def _grid_triangles(height: int, width: int, offset: int) -> np.ndarray:
     )
 
 
+def _resized(texture: np.ndarray, long_side: int) -> np.ndarray:
+    """Resize a texture so its longer side is ``long_side``, keeping its aspect."""
+    height, width = texture.shape
+    scale = long_side / max(height, width)
+    size = (max(2, round(width * scale)), max(2, round(height * scale)))
+    if size == (width, height):
+        return texture
+    image = Image.fromarray(texture).resize(size, Image.Resampling.LANCZOS)
+    return np.asarray(image, dtype=np.uint8)
+
+
+def tile_textures(tiles: list[GlobeImage]) -> list[np.ndarray]:
+    """Choose each tile's mesh resolution from its size on the globe.
+
+    Big patches (high-altitude frames) get up to ``MAX_TILE_PIXELS`` on their
+    longer side and tiny ones ``MIN_TILE_PIXELS``. If the mosaic would exceed
+    ``MESH_VERTEX_BUDGET`` vertices, every tile shrinks by the same factor.
+    Textures are never enlarged beyond what the tile provides.
+    """
+    wanted = [
+        min(
+            max(
+                round(TILE_PIXELS_PER_DEGREE * patch_width_degrees(tile.altitude_km)),
+                MIN_TILE_PIXELS,
+            ),
+            MAX_TILE_PIXELS,
+            max(tile.texture.shape),
+        )
+        for tile in tiles
+    ]
+    # Vertices are about long_side² × aspect, so area scales with the square.
+    area = sum(
+        side * side * min(tile.texture.shape) / max(tile.texture.shape)
+        for side, tile in zip(wanted, tiles, strict=True)
+    )
+    factor = min(1.0, math.sqrt(MESH_VERTEX_BUDGET / area)) if area else 1.0
+    return [
+        _resized(tile.texture, max(2, math.floor(side * factor)))
+        for side, tile in zip(wanted, tiles, strict=True)
+    ]
+
+
 def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
     """Merge every tile into one mesh: one WebGL draw call instead of hundreds.
 
-    Frame IDs travel as numeric per-vertex ``customdata`` (sent in binary),
-    which keeps the payload small while still labelling each photo on hover.
+    Frame IDs travel as per-vertex ``int16`` ``customdata`` and brightness as
+    ``uint8`` intensity; Plotly sends both in binary, which keeps the payload
+    small while still labelling each photo on hover.
     """
     coordinates, intensities, triangles, frame_ids = [], [], [], []
     offset = 0
-    for index, tile in enumerate(tiles):
+    for index, (tile, texture) in enumerate(
+        zip(tiles, tile_textures(tiles), strict=True)
+    ):
         radius = TILE_RADIUS + TILE_RADIUS_STEP * (index % 7)
-        grid = np.stack([axis.ravel() for axis in _patch_grid(tile, radius)], axis=1)
-        height, width = tile.texture.shape
+        resized = GlobeImage(
+            tile.frame_id, tile.latitude, tile.longitude, tile.altitude_km, texture
+        )
+        grid = np.stack([axis.ravel() for axis in _patch_grid(resized, radius)], axis=1)
+        height, width = texture.shape
         coordinates.append(grid)
-        intensities.append(tile.texture.ravel())
+        intensities.append(texture.ravel())
         triangles.append(_grid_triangles(height, width, offset))
-        frame_ids.append(np.full(len(grid), int(tile.frame_id), dtype=np.int32))
+        frame_ids.append(np.full(len(grid), int(tile.frame_id), dtype=np.int16))
         offset += len(grid)
 
     vertices = np.concatenate(coordinates).astype(np.float32)
@@ -263,7 +319,7 @@ def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
         i=faces[:, 0],
         j=faces[:, 1],
         k=faces[:, 2],
-        intensity=np.concatenate(intensities).astype(np.float32),
+        intensity=np.concatenate(intensities),
         intensitymode="vertex",
         colorscale=GRAY_SCALE,
         cmin=0,

@@ -4,6 +4,9 @@ import pytest
 from orbiter.globe import (
     FALLBACK_PATCH_DEGREES,
     MAX_PATCH_DEGREES,
+    MAX_TILE_PIXELS,
+    MESH_VERTEX_BUDGET,
+    MIN_TILE_PIXELS,
     GlobeImage,
     _to_cartesian,
     format_coordinates,
@@ -11,17 +14,20 @@ from orbiter.globe import (
     make_globe,
     patch_contains,
     patch_width_degrees,
+    tile_textures,
     visible_images,
 )
 
 
-def _image(frame_id="1041", latitude=3.3, longitude=39.15, altitude_km=256.43):
+def _image(
+    frame_id="1041", latitude=3.3, longitude=39.15, altitude_km=256.43, size=(32, 24)
+):
     return GlobeImage(
         frame_id=frame_id,
         latitude=latitude,
         longitude=longitude,
         altitude_km=altitude_km,
-        texture=np.full((32, 24), 160, dtype=np.uint8),
+        texture=np.full(size, 160, dtype=np.uint8),
     )
 
 
@@ -99,8 +105,10 @@ def test_make_globe_draws_tiles_selection_and_marker():
         "scatter3d",
     )
     assert set(np.asarray(mosaic.customdata)) == {1042}
-    assert len(mosaic.x) == 32 * 24
-    assert len(mosaic.i) == 2 * 31 * 23
+    # A 6.3° patch gets 19 px on its long side: a 19 × 14 vertex grid.
+    assert len(mosaic.x) == 19 * 14
+    assert len(mosaic.i) == 2 * 18 * 13
+    assert np.asarray(mosaic.intensity).dtype == np.uint8
     assert int(np.max(mosaic.i)) < len(mosaic.x)
     assert selected.name == "1041"
     assert list(figure.data[-1].text) == ["1041"]
@@ -128,3 +136,31 @@ def test_patch_contains_handles_the_180_degree_meridian():
     assert patch_contains(east_edge, 0, -179.5)
     assert patch_contains(east_edge, 0, 180.5)
     assert not patch_contains(east_edge, 0, 0)
+
+
+def test_tile_textures_scale_with_patch_size():
+    small = _image("1001", altitude_km=50, size=(48, 41))
+    large = _image("4001", altitude_km=3000, size=(48, 41))
+
+    small_texture, large_texture = tile_textures([small, large])
+
+    assert max(small_texture.shape) == MIN_TILE_PIXELS
+    assert max(large_texture.shape) == MAX_TILE_PIXELS
+
+
+def test_tile_textures_never_enlarge():
+    (texture,) = tile_textures([_image(altitude_km=3000, size=(12, 10))])
+
+    assert texture.shape == (12, 10)
+
+
+def test_tile_textures_respect_the_vertex_budget():
+    tiles = [
+        _image(str(4000 + index), altitude_km=3000, size=(48, 41))
+        for index in range(200)
+    ]
+
+    textures = tile_textures(tiles)
+
+    assert sum(texture.size for texture in textures) <= MESH_VERTEX_BUDGET
+    assert max(textures[0].shape) < MAX_TILE_PIXELS

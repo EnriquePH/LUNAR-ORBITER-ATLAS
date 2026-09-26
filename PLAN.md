@@ -38,15 +38,16 @@
       barra superior de la app.
 - [x] Página del proyecto en `site/` para GitHub Pages (bilingüe, capturas, cómo
       ejecutarla, fuentes y licencias) y workflow `pages.yml`.
+- [x] Texturas según el tamaño de cada foto: 3 px/grado entre 10 y 48 px, con un
+      tope de 90 000 vértices para todo el mosaico (`tile_textures`). Las misiones
+      1–3 pesan un 32–70 % menos; las fotos grandes pasan de 20 a 48 px (30 px en la
+      misión 4, que va al tope: 87 000 vértices, 5,4 MB de figura). Coste medido:
+      +0,17 s en servidor y +0,3–0,6 s de redibujado con render por software.
 
 ## Pendiente
 
 
 - [ ] Hacer push y comprobar la primera ejecución de la CI y del despliegue de
       Pages (activar antes Settings → Pages → Source: GitHub Actions).
-- [ ] Texturas más nítidas para las fotos grandes (misión 4 y tomas altas): hoy
-      todas usan 20 px (`TILE_SIZE`). Escalar la resolución con el tamaño del
-      parche sin disparar el peso de la figura (la misión 4 entera pesa hoy
-      ~63 000 vértices).
 - [ ] Las tomas oblicuas de gran altitud (p. ej. las de la Tierra de las misiones
       1–3) quedan deformadas: valorar marcarlas u ocultarlas por defecto.
