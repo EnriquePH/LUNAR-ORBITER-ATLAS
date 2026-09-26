@@ -20,8 +20,8 @@ Project page: <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>
 ## Features
 
 - **Mission mosaic** — every frame of the selected mission is projected onto
-  the part of the Moon it photographed. Click a photo to hide it and show its
-  details; **Show hidden** brings them back.
+  the part of the Moon it photographed. Click a photo to show its details in
+  the side panel.
 - **Frame details** — LPI preview, principal point, spacecraft altitude and
   position, and illumination angles (sun azimuth, incidence, emission, phase).
 - **Reference tabs** — summarised facts about the Moon and the Lunar Orbiter

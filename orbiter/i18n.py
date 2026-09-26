@@ -23,7 +23,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "tab_moon": "La Luna",
         "tab_program": "Programa Lunar Orbiter",
         "globe_label": "VISTA 3D  /  ARRASTRA PARA ROTAR · CLICK EN UNA FOTO PARA "
-        "OCULTARLA",
+        "VER SUS DATOS",
         "globe_note": "PROYECTADAS DESDE LA NAVE · ORIENTACIÓN ESTIMADA",
         "legend_high_altitude": "TOMA DE GRAN ALTITUD (> {km} KM)",
         "note_high_altitude": (
@@ -36,7 +36,6 @@ TEXTS: dict[str, dict[str, str]] = {
         "mission_placeholder": "MISIÓN",
         "frame_placeholder": "FOTOGRAMA",
         "mosaic_preparing": "PREPARANDO MOSAICO…",
-        "show_hidden": "MOSTRAR OCULTAS ({count})",
         "load_button": "Cargar ↗",
         "connecting": "CONECTANDO CON EL ARCHIVO LPI…",
         "preview_alt": "Vista previa del fotograma Lunar Orbiter",
@@ -82,7 +81,7 @@ TEXTS: dict[str, dict[str, str]] = {
         "tab_atlas": "Atlas",
         "tab_moon": "The Moon",
         "tab_program": "Lunar Orbiter program",
-        "globe_label": "3D VIEW  /  DRAG TO ROTATE · CLICK A PHOTO TO HIDE IT",
+        "globe_label": "3D VIEW  /  DRAG TO ROTATE · CLICK A PHOTO FOR ITS DETAILS",
         "globe_note": "PROJECTED FROM THE SPACECRAFT · ORIENTATION ESTIMATED",
         "legend_high_altitude": "HIGH-ALTITUDE FRAME (> {km} KM)",
         "note_high_altitude": (
@@ -95,7 +94,6 @@ TEXTS: dict[str, dict[str, str]] = {
         "mission_placeholder": "MISSION",
         "frame_placeholder": "FRAME",
         "mosaic_preparing": "PREPARING MOSAIC…",
-        "show_hidden": "SHOW HIDDEN ({count})",
         "load_button": "Load ↗",
         "connecting": "CONNECTING TO THE LPI ARCHIVE…",
         "preview_alt": "Preview of the Lunar Orbiter frame",
@@ -144,7 +142,7 @@ def t(lang: str, key: str, **params: object) -> str:
 
     Args:
         lang: Language code; unsupported values fall back to Spanish.
-        key: A key of ``TEXTS``, e.g. ``"show_hidden"``.
+        key: A key of ``TEXTS``, e.g. ``"status_mission_frames"``.
         **params: Values for the ``{placeholders}`` in the text.
 
     Raises:

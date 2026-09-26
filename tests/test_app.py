@@ -10,15 +10,14 @@ from orbiter import app as app_module
 from orbiter.app import (
     TEXTURE_SIZE,
     describe_error,
-    describe_hidden,
     globe_image,
-    hide_clicked_image,
     language_from_search,
     list_mission_frames,
     metadata_rows,
     poll_mosaic,
     render_globe,
     render_page,
+    select_clicked_image,
     select_frame,
     serve_layout,
     update_frame,
@@ -139,10 +138,10 @@ def test_render_globe_combines_selection_and_mission_tiles(monkeypatch):
     tiles = {"1005": _tile("1005", 0, 0), "1006": _tile("1006", 10, 10)}
     monkeypatch.setattr(app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles)))
 
-    figure = render_globe("1041", ["1006"], 2, 1)
+    figure = render_globe("1041", 2, 1)
 
     mosaic, selected = figure.data[1:3]
-    assert set(np.asarray(mosaic.customdata)) == {1005}
+    assert set(np.asarray(mosaic.customdata)) == {1005, 1006}
     assert selected.name == "1041"
 
 
@@ -177,11 +176,11 @@ def test_metadata_rows_mark_missing_fields():
 def test_list_mission_frames_starts_mosaic(monkeypatch, loader):
     monkeypatch.setattr(app_module, "fetch_mission_frames", lambda m: ["1005", "1006"])
 
-    options, value, disabled, status, poll_off, count, hidden = list_mission_frames(1)
+    options, value, disabled, status, poll_off, count = list_mission_frames(1)
 
     assert (options, value, disabled) == (["1005", "1006"], None, False)
     assert status == "MISIÓN 1 · 2 FOTOGRAMAS"
-    assert (poll_off, count, hidden) == (False, 0, [])
+    assert (poll_off, count) == (False, 0)
     assert loader.started == [1]
 
 
@@ -213,33 +212,35 @@ def test_poll_mosaic_rerenders_in_steps_and_stops_when_finished(monkeypatch):
     assert (count, poll_off) == (no_update, True)
 
 
-def test_hide_clicked_image_hides_and_selects_tile(monkeypatch):
+def test_click_selects_the_photo_without_hiding_it(monkeypatch):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
     tiles = {"1100": _tile("1100", -40, -120)}
     monkeypatch.setattr(app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles)))
     x, y, z = _to_cartesian(-40.2, -120.1, 1.003)
     click = {"points": [{"x": x, "y": y, "z": z, "curveNumber": 1}]}
 
-    assert hide_clicked_image(click, ["1005"], "1041", 1) == (["1005", "1100"], "1100")
+    assert select_clicked_image(click, "1041", 1) == "1100"
+    mesh = next(
+        trace for trace in render_globe("1041", 1, 1).data if trace.type == "mesh3d"
+    )
+    assert 1100 in set(np.asarray(mesh.customdata))
 
 
-def test_hide_clicked_image_ignores_clicks_outside_photos(monkeypatch, loader):
+def test_click_ignores_empty_space_and_the_current_selection(monkeypatch, loader):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
     x, y, z = _to_cartesian(-60, 150)
-    click = {"points": [{"x": x, "y": y, "z": z}]}
+    empty = {"points": [{"x": x, "y": y, "z": z}]}
+    x, y, z = _to_cartesian(3.3, 39.15, 1.006)
+    on_selection = {"points": [{"x": x, "y": y, "z": z}]}
 
-    assert hide_clicked_image(click, [], "1041", 1) == (no_update, no_update)
-    assert hide_clicked_image(None, [], "1041", 1) == (no_update, no_update)
-
-
-def test_describe_hidden_counts_and_disables_button():
-    assert describe_hidden(["1005", "1006"]) == ("MOSTRAR OCULTAS (2)", False)
-    assert describe_hidden([]) == ("MOSTRAR OCULTAS (0)", True)
+    assert select_clicked_image(empty, "1041", 1) is no_update
+    assert select_clicked_image(None, "1041", 1) is no_update
+    assert select_clicked_image(on_selection, "1041", 1) is no_update
 
 
-def test_select_frame_loads_and_unhides_frame():
-    assert select_frame("1006", ["1005", "1006"]) == ("1006", ["1005"])
-    assert select_frame(None, ["1005"]) == (no_update, no_update)
+def test_select_frame_loads_the_chosen_frame():
+    assert select_frame("1006") == "1006"
+    assert select_frame(None) is no_update
 
 
 def test_describe_error_translates_lpi_errors():

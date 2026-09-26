@@ -31,8 +31,12 @@ def test_normalize_language_falls_back_to_default(value, expected):
 
 
 def test_t_formats_parameters():
-    assert t("en", "show_hidden", count=3) == "SHOW HIDDEN (3)"
-    assert t("es", "show_hidden", count=3) == "MOSTRAR OCULTAS (3)"
+    assert t("en", "status_mission_frames", mission=4, count=131) == (
+        "MISSION 4 · 131 FRAMES"
+    )
+    assert t("es", "status_mission_frames", mission=4, count=131) == (
+        "MISIÓN 4 · 131 FOTOGRAMAS"
+    )
 
 
 def test_reference_content_matches_between_languages():

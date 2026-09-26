@@ -7,7 +7,7 @@
 - [x] Fase 3 — metadatos de nave e iluminación, selectores de misión y fotograma.
 - [x] Fase 4 — CSS en `assets/`, Ruff con `E501` y formato.
 - [x] Mosaico de la misión en la esfera (caché en `data/lpi/`, una sola malla),
-      click para ocultar, «Mostrar ocultas (n)», marcas N/S y ecuador.
+      marcas N/S y ecuador.
 - [x] Pestañas de datos: «Atlas», «La Luna» y «Programa Lunar Orbiter», con
       atribución CC BY-SA 4.0 a Wikipedia.
 - [x] App bilingüe ES/EN: selector en la barra superior (`?lang=`), textos en
@@ -54,6 +54,9 @@
 - [x] Push, CI en verde (Python 3.10 y 3.14) y web publicada en
       <https://enriqueph.github.io/LUNAR-ORBITER-ATLAS/>. Acciones de GitHub
       actualizadas a versiones con Node 24.
+
+- [x] El click en una foto ya no la oculta: solo la selecciona y muestra sus datos
+      (se retiran «Mostrar ocultas» y el estado de fotos ocultas).
 
 ## Pendiente
 

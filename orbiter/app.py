@@ -241,21 +241,9 @@ def _atlas(lang: str) -> html.Main:
                                 className="selector-row",
                             ),
                             html.Div(
-                                [
-                                    html.Div(
-                                        t(lang, "mosaic_preparing"),
-                                        id="mosaic-status",
-                                        className="status-line",
-                                    ),
-                                    html.Button(
-                                        t(lang, "show_hidden", count=0),
-                                        id="show-hidden",
-                                        n_clicks=0,
-                                        disabled=True,
-                                        className="text-button",
-                                    ),
-                                ],
-                                className="mosaic-row",
+                                t(lang, "mosaic_preparing"),
+                                id="mosaic-status",
+                                className="status-line mosaic-status",
                             ),
                             html.Div(
                                 [
@@ -336,7 +324,6 @@ def serve_layout(lang: str) -> html.Div:
             ),
             dcc.Interval(id="mosaic-poll", interval=1000, disabled=True),
             dcc.Store(id="selected-frame"),
-            dcc.Store(id="hidden-frames", data=[]),
             dcc.Store(id="mosaic-count", data=0),
             html.Header(
                 [
@@ -525,19 +512,13 @@ def _selected_image(frame_id: str | None) -> GlobeImage | None:
 @app.callback(
     Output("globe", "figure"),
     Input("selected-frame", "data"),
-    Input("hidden-frames", "data"),
     Input("mosaic-count", "data"),
     Input("mission-select", "value"),
 )
-def render_globe(
-    selected_id: str | None,
-    hidden: list[str] | None,
-    _mosaic_count: int,
-    mission: int | None,
-):
-    """Redraw the globe: the mission's loaded tiles, minus hidden ones."""
+def render_globe(selected_id: str | None, _mosaic_count: int, mission: int | None):
+    """Redraw the globe with the mission's loaded tiles and the selection."""
     tiles = LOADER.progress(mission).tiles.values() if mission else ()
-    return make_globe(_selected_image(selected_id), tiles, set(hidden or ()))
+    return make_globe(_selected_image(selected_id), tiles)
 
 
 @app.callback(
@@ -547,7 +528,6 @@ def render_globe(
     Output("status", "children", allow_duplicate=True),
     Output("mosaic-poll", "disabled"),
     Output("mosaic-count", "data"),
-    Output("hidden-frames", "data", allow_duplicate=True),
     Input("mission-select", "value"),
     State("lang", "data"),
     prevent_initial_call="initial_duplicate",
@@ -558,13 +538,13 @@ def list_mission_frames(mission: int, lang: str = "es"):
         frame_ids = fetch_mission_frames(mission)
     except requests.RequestException as error:
         status = t(lang, "status_connection_error", error=error)
-        return [], None, True, status, True, 0, []
+        return [], None, True, status, True, 0
     except ValueError as error:
         status = t(lang, "status_load_error", error=describe_error(lang, error))
-        return [], None, True, status, True, 0, []
+        return [], None, True, status, True, 0
     LOADER.start(mission)
     status = t(lang, "status_mission_frames", mission=mission, count=len(frame_ids))
-    return frame_ids, None, False, status, False, 0, []
+    return frame_ids, None, False, status, False, 0
 
 
 @app.callback(
@@ -603,70 +583,38 @@ def poll_mosaic(_intervals: int, mission: int | None, rendered: int, lang="es"):
 
 
 @app.callback(
-    Output("hidden-frames", "data"),
     Output("frame-id", "value", allow_duplicate=True),
     Input("globe", "clickData"),
-    State("hidden-frames", "data"),
     State("selected-frame", "data"),
     State("mission-select", "value"),
     prevent_initial_call=True,
 )
-def hide_clicked_image(
-    click_data: dict | None,
-    hidden: list[str] | None,
-    selected_id: str | None,
-    mission: int | None,
+def select_clicked_image(
+    click_data: dict | None, selected_id: str | None, mission: int | None
 ):
-    """Hide the clicked photo and show its details in the side panel."""
+    """Show the clicked photo's details in the side panel; it stays on the globe."""
     if not click_data or not click_data.get("points"):
-        return no_update, no_update
+        return no_update
     point = click_data["points"][0]
     if not {"x", "y", "z"} <= point.keys():
-        return no_update, no_update
+        return no_update
 
-    hidden = list(hidden or ())
     tiles = LOADER.progress(mission).tiles.values() if mission else ()
-    images = visible_images(_selected_image(selected_id), tiles, set(hidden))
+    images = visible_images(_selected_image(selected_id), tiles, ())
     clicked = image_at(images, point["x"], point["y"], point["z"])
-    if clicked is None:
-        return no_update, no_update
-    return [*hidden, clicked.frame_id], clicked.frame_id
-
-
-@app.callback(
-    Output("show-hidden", "children"),
-    Output("show-hidden", "disabled"),
-    Input("hidden-frames", "data"),
-    State("lang", "data"),
-)
-def describe_hidden(hidden: list[str] | None, lang: str = "es"):
-    """Label the «show hidden» button with the count; disable it at zero."""
-    count = len(hidden or ())
-    return t(lang, "show_hidden", count=count), count == 0
-
-
-@app.callback(
-    Output("hidden-frames", "data", allow_duplicate=True),
-    Input("show-hidden", "n_clicks"),
-    prevent_initial_call=True,
-)
-def show_hidden(_clicks: int):
-    """Make every hidden photo visible again."""
-    return []
+    if clicked is None or clicked.frame_id == selected_id:
+        return no_update
+    return clicked.frame_id
 
 
 @app.callback(
     Output("frame-id", "value"),
-    Output("hidden-frames", "data", allow_duplicate=True),
     Input("frame-select", "value"),
-    State("hidden-frames", "data"),
     prevent_initial_call=True,
 )
-def select_frame(frame_id: str | None, hidden: list[str] | None):
-    """Load the chosen frame and make it visible again if it was hidden."""
-    if not frame_id:
-        return no_update, no_update
-    return frame_id, [value for value in hidden or () if value != frame_id]
+def select_frame(frame_id: str | None):
+    """Load the frame chosen in the selector."""
+    return frame_id or no_update
 
 
 def main() -> None:

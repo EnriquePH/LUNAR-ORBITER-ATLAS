@@ -28,8 +28,9 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   Dos callbacks clientside guardan la elección en `localStorage` y la recuperan
   si se entra sin `?lang=`; también fijan `<html lang>`.
   Callbacks: `update_frame` (5 salidas), `render_globe`, `list_mission_frames` (arranca
-  el `LOADER`), `poll_mosaic` (Interval), `hide_clicked_image`, `show_hidden`,
-  `describe_hidden`, `select_frame`. Se prueban llamándolos directamente.
+  el `LOADER`), `poll_mosaic` (Interval), `select_clicked_image` (el click solo
+  selecciona la foto; **no la oculta**) y `select_frame`. Se prueban llamándolos
+  directamente.
 - `orbiter/globe.py` — figura Plotly: esfera base, **todas las teselas en un único
   `Mesh3d`** (200 `Surface` congelan el navegador), foto seleccionada como `Surface`,
   marcador, contorno de fotos de gran altitud (>`HIGH_ALTITUDE_KM`), ecuador y polos

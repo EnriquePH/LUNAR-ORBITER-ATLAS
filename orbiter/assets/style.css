@@ -23,6 +23,7 @@ h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
 .side-panel { border-left:1px solid #333537; padding:22px 0 22px 24px; display:flex; flex-direction:column; gap:18px; }
 .side-heading { margin:0; font:500 19px 'DM Mono',monospace; }
 .control-row { display:flex; gap:8px; }
+.mosaic-status { margin-bottom:8px; }
 .selector-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
 .side-panel {
     --Dash-Fill-Inverse-Strong:#181a1b; --Dash-Text-Strong:#e6e3dd; --Dash-Text-Weak:#aaa7a0;
@@ -68,10 +69,6 @@ h1 { margin:5px 0 0; font:500 36px 'DM Mono',monospace; letter-spacing:-.5px; }
     .preview-frame { height:260px; }
     .footbar { flex-direction:column; gap:7px; }
 }
-.mosaic-row { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
-.text-button { border:0; background:none; padding:0; color:#ff8a61; font:9px 'DM Mono',monospace; letter-spacing:.4px; cursor:pointer; white-space:nowrap; }
-.text-button:hover { color:#ffc1aa; }
-.text-button:disabled { color:#5c5e5f; cursor:default; }
 
 /* Language switch */
 .topbar-end { display:flex; align-items:center; gap:22px; }
