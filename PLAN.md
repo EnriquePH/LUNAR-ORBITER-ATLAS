@@ -12,7 +12,7 @@
       atribución CC BY-SA 4.0 a Wikipedia.
 - [x] App bilingüe ES/EN: selector en la barra superior (`?lang=`), textos en
       `orbiter/i18n.py` y `orbiter/reference.py`.
-- [x] `config.json` con host, puerto 8050 e idioma por defecto.
+- [x] `config.json` con host, puerto 8202 e idioma por defecto.
 - [x] `scripts/run.sh`, `Makefile` y comando `lunar-orbiter`.
 - [x] README en inglés; licencia MIT a nombre de ENERGYCODE.
 - [x] CI con GitHub Actions (ruff + pytest, Python 3.10 y 3.14).

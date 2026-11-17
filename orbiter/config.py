@@ -2,7 +2,7 @@
 
 Example ``config.json``::
 
-    {"host": "127.0.0.1", "port": 8050, "language": "es"}
+    {"host": "127.0.0.1", "port": 8202, "language": "es"}
 """
 
 from __future__ import annotations
@@ -26,12 +26,12 @@ class AppConfig:
     """
 
     host: str = "127.0.0.1"
-    port: int = 8050
+    port: int = 8202
     language: str = "es"
 
     @property
     def url(self) -> str:
-        """Address to open in a browser, e.g. ``http://127.0.0.1:8050/``."""
+        """Address to open in a browser, e.g. ``http://127.0.0.1:8202/``."""
         return f"http://{self.host}:{self.port}/"
 
 

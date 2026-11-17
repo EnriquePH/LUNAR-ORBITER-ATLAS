@@ -95,7 +95,7 @@ make run       # start the app
 make stop      # stop it
 ```
 
-Then open <http://127.0.0.1:8050/>. `make run` calls `scripts/run.sh`, which
+Then open <http://127.0.0.1:8202/>. `make run` calls `scripts/run.sh`, which
 creates `.venv` if needed and stops an earlier instance of the app that is
 still holding the port.
 
@@ -116,7 +116,7 @@ Settings live in `config.json` at the project root:
 ```json
 {
   "host": "127.0.0.1",
-  "port": 8050,
+  "port": 8202,
   "language": "es"
 }
 ```
@@ -153,7 +153,7 @@ make lint     # Ruff lint and format check
 make format   # apply Ruff fixes and formatting
 make check    # lint + test
 make lint-md  # lint the Markdown files (needs uv)
-make site     # serve the project page on http://127.0.0.1:8765/
+make site     # serve the project page on http://127.0.0.1:9202/
 make icons    # build favicon and icons from assets/icon.png and logo.png
 make help     # list all targets
 ```

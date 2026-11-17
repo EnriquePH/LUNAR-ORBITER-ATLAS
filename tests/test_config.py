@@ -15,7 +15,7 @@ def test_missing_file_uses_defaults(tmp_path):
     config = load_config(tmp_path / "missing.json")
 
     assert config == AppConfig()
-    assert config.url == "http://127.0.0.1:8050/"
+    assert config.url == "http://127.0.0.1:8202/"
 
 
 def test_reads_host_port_and_language(tmp_path):
@@ -27,12 +27,12 @@ def test_reads_host_port_and_language(tmp_path):
 @pytest.mark.parametrize(
     ("data", "message"),
     [
-        ({"port": "8050"}, "port"),
+        ({"port": "8202"}, "port"),
         ({"port": 70000}, "port"),
         ({"port": True}, "port"),
         ({"language": "fr"}, "language"),
         ({"host": ""}, "host"),
-        ({"prot": 8050}, "Unknown keys"),
+        ({"prot": 8202}, "Unknown keys"),
     ],
 )
 def test_rejects_invalid_values(tmp_path, data, message):
@@ -40,5 +40,5 @@ def test_rejects_invalid_values(tmp_path, data, message):
         load_config(_write(tmp_path, data))
 
 
-def test_repository_config_pins_port_8050():
-    assert load_config() == AppConfig(port=8050)
+def test_repository_config_pins_port_8202():
+    assert load_config() == AppConfig(port=8202)

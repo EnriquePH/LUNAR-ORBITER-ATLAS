@@ -1,5 +1,5 @@
 PYTHON := .venv/bin/python
-SITE_PORT := 8765
+SITE_PORT := 9202
 # Missions for `make download`, e.g. make download MISSIONS="1 4" (default: all).
 MISSIONS :=
 MARKDOWN := README.md CLAUDE.md PLAN.md CHANGELOG.md
@@ -44,7 +44,7 @@ check: lint test  ## Lint and test
 icons:  ## Build favicon and icons from assets/icon.png and assets/logo.png
 	$(PYTHON) scripts/build_icons.py
 
-site:  ## Serve the GitHub Pages site locally on http://127.0.0.1:8765/
+site:  ## Serve the GitHub Pages site locally on http://127.0.0.1:9202/
 	$(PYTHON) -m http.server $(SITE_PORT) --bind 127.0.0.1 --directory site
 
 clean:  ## Remove tool caches (keeps data/ and draft/)

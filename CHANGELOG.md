@@ -7,6 +7,8 @@ All notable changes to Lunar Orbiter Atlas are listed here. Versions follow
 
 ### Changed
 
+- Ports per the PROYECTOS convention: app 8202, project site 9202.
+
 - The Dash app and the site no longer load Google Fonts (DM Mono from the system).
 
 ## [1.0.0] — 2026-09-26
