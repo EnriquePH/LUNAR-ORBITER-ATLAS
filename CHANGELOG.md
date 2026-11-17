@@ -3,6 +3,12 @@
 All notable changes to Lunar Orbiter Atlas are listed here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The Dash app and the site no longer load Google Fonts (DM Mono from the system).
+
 ## [1.0.0] — 2026-09-26
 
 First release.

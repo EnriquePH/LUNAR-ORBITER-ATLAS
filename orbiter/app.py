@@ -182,16 +182,11 @@ def metadata_rows(
     ]
 
 
-# DM Mono is the only typeface in the app (text, headings and the globe).
-FONTS_URL = (
-    "https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap"
-)
+# DM Mono is the typeface of the app (text, headings and the globe), from the system when installed: no Google Fonts.
 
 # Pages are built by a callback, so their component IDs are not in the
 # initial layout; the callbacks below still validate against serve_layout().
-app = Dash(
-    __name__, external_stylesheets=[FONTS_URL], suppress_callback_exceptions=True
-)
+app = Dash(__name__, suppress_callback_exceptions=True)
 app.title = "Lunar Orbiter Atlas"
 # Dash's default page plus PNG and touch icons (favicon.ico is automatic).
 app.index_string = """<!DOCTYPE html>
