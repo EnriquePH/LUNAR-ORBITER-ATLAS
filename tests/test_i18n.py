@@ -1,3 +1,5 @@
+"""Tests for the translation tables, language normalization and reference tabs."""
+
 import re
 
 import pytest

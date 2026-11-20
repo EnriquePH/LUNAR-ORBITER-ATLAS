@@ -24,7 +24,7 @@
       en `lpi.py`; unidades, aproximación y meridiano 180° en `globe.py`;
       contratos de `config.py` e `i18n.py` (y `port: true` ahora se rechaza);
       caché del mosaico documentada (no caduca; borrar `data/lpi` para recargar);
-      `urls.py` construye sin validar; Ruff `D` con convención Google.
+      `urls.py` construye sin validar; Ruff `D` con convención Google (desde el 2026-11-20, NumPy).
 - [x] Idioma recordado entre visitas (`localStorage`) y atributo `lang` del HTML.
 - [x] Tipografía única: DM Mono en toda la app (antes Manrope y Newsreader).
 - [x] Mosaico probado con las 5 misiones (890 fotos, 0 fallos; primera descarga

@@ -313,6 +313,7 @@ CONTENT = {
 
 
 def _fact_rows(facts: list[tuple[str, str]]) -> html.Div:
+    """Build the label/value rows of a fact table."""
     return html.Div(
         [
             html.Div(
@@ -329,10 +330,12 @@ def _fact_rows(facts: list[tuple[str, str]]) -> html.Div:
 
 
 def _summary(paragraphs: list[str]) -> html.Ul:
+    """Build a bulleted list of summary paragraphs."""
     return html.Ul([html.Li(text) for text in paragraphs], className="summary-list")
 
 
 def _source(source: tuple[str, str], lang: str) -> html.P:
+    """Build the attribution paragraph (source title and link, licence) for a tab."""
     title, url = source
     before, between = CONTENT[lang]["source"]
     return html.P(

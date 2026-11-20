@@ -31,10 +31,13 @@ class LpiError(ValueError):
     The app turns ``key`` and ``params`` into text with ``orbiter.i18n``; the
     plain message is English for logs and non-UI callers.
 
-    Args:
-        key: One of ``MESSAGES``: ``invalid_frame_id``, ``no_coordinates``,
-            ``no_preview``, ``invalid_mission`` or ``no_frames``.
-        **params: Values interpolated into the message, e.g. ``frame_id``.
+    Parameters
+    ----------
+    key : str
+        One of ``MESSAGES``: ``invalid_frame_id``, ``no_coordinates``,
+        ``no_preview``, ``invalid_mission`` or ``no_frames``.
+    **params : object
+        Values interpolated into the message, e.g. ``frame_id``.
     """
 
     MESSAGES = {
@@ -138,16 +141,23 @@ def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
     high-resolution sub-frame (``_h2``), then any other plate; its URL is made
     absolute. That order matches the image the gallery thumbnail shows.
 
-    Args:
-        frame_id: Frame identifier the page belongs to, e.g. ``"1041"``.
-        page_html: HTML of the frame page.
+    Parameters
+    ----------
+    frame_id : str
+        Frame identifier the page belongs to, e.g. ``"1041"``.
+    page_html : str
+        HTML of the frame page.
 
-    Returns:
+    Returns
+    -------
+    FrameMetadata
         The parsed fields; see :class:`FrameMetadata` for keys and units.
 
-    Raises:
-        LpiError: ``no_coordinates`` if the principal point is missing, or
-            ``no_preview`` if no preview link for ``frame_id`` is found.
+    Raises
+    ------
+    LpiError
+        ``no_coordinates`` if the principal point is missing, or ``no_preview``
+        if no preview link for ``frame_id`` is found.
     """
     soup = BeautifulSoup(page_html, "html.parser")
     text = " ".join(soup.stripped_strings)
@@ -215,16 +225,23 @@ def fetch_frame(frame_id: str) -> OrbiterFrame:
     The last 16 frames are kept in memory, so repeated calls are free until
     :func:`clear_cache` is called. Surrounding whitespace in the ID is ignored.
 
-    Args:
-        frame_id: Numeric frame identifier, e.g. ``"1041"``.
+    Parameters
+    ----------
+    frame_id : str
+        Numeric frame identifier, e.g. ``"1041"``.
 
-    Returns:
+    Returns
+    -------
+    OrbiterFrame
         The frame's metadata and preview bytes.
 
-    Raises:
-        LpiError: ``invalid_frame_id`` for non-numeric IDs (checked before any
-            request), or a parsing error from :func:`parse_frame_page`.
-        requests.RequestException: On HTTP errors, timeouts or no connection.
+    Raises
+    ------
+    LpiError
+        ``invalid_frame_id`` for non-numeric IDs (checked before any request),
+        or a parsing error from :func:`parse_frame_page`.
+    requests.RequestException
+        On HTTP errors, timeouts or no connection.
     """
     frame_id = str(frame_id).strip()
     if not frame_id.isdigit():
@@ -235,6 +252,7 @@ def fetch_frame(frame_id: str) -> OrbiterFrame:
 
 @lru_cache(maxsize=16)
 def _fetch_frame_cached(frame_id: str) -> OrbiterFrame:
+    """Download and parse one frame's page and preview; cached in memory by ID."""
     headers = {"User-Agent": USER_AGENT}
     response = requests.get(frame_url(frame_id), headers=headers, timeout=20)
     response.raise_for_status()
@@ -261,16 +279,23 @@ def fetch_mission_frames(mission: int) -> list[str]:
 
     Each mission's list is cached in memory until :func:`clear_cache`.
 
-    Args:
-        mission: Mission number from 1 to ``MISSIONS_NUM``.
+    Parameters
+    ----------
+    mission : int
+        Mission number from 1 to ``MISSIONS_NUM``.
 
-    Returns:
+    Returns
+    -------
+    list of str
         Frame IDs in gallery order, without duplicates.
 
-    Raises:
-        LpiError: ``invalid_mission`` for numbers outside 1–5 (checked before
-            any request), or ``no_frames`` if the page lists none.
-        requests.RequestException: On HTTP errors, timeouts or no connection.
+    Raises
+    ------
+    LpiError
+        ``invalid_mission`` for numbers outside 1–5 (checked before any
+        request), or ``no_frames`` if the page lists none.
+    requests.RequestException
+        On HTTP errors, timeouts or no connection.
     """
     if mission not in range(1, MISSIONS_NUM + 1):
         raise LpiError("invalid_mission", missions=MISSIONS_NUM)
@@ -279,6 +304,7 @@ def fetch_mission_frames(mission: int) -> list[str]:
 
 @lru_cache(maxsize=MISSIONS_NUM)
 def _fetch_mission_frames_cached(mission: int) -> tuple[str, ...]:
+    """Download a mission's gallery page and return its frame IDs; cached in memory."""
     response = requests.get(
         mission_url(mission), headers={"User-Agent": USER_AGENT}, timeout=20
     )

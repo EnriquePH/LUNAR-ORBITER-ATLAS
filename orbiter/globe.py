@@ -100,20 +100,30 @@ NO_CONTOURS = {axis: {"highlight": False} for axis in ("x", "y", "z")}
 class GlobeImage:
     """Anything drawable on the globe: an ID, a position and a texture.
 
-    Attributes:
-        frame_id: Numeric LPI frame ID as text; also used as the hover label.
-        latitude: Principal point latitude in degrees (-90..90).
-        longitude: Principal point longitude in degrees.
-        altitude_km: Spacecraft altitude in km, or ``None`` if unknown.
-        texture: 2-D ``uint8`` grayscale array (rows top to bottom), 0 black
-            to 255 white. Its aspect sets the frame's.
-        spacecraft_latitude: Spacecraft sub-point latitude in degrees, or
-            ``None``. With the longitude and altitude it enables projection.
-        spacecraft_longitude: Spacecraft sub-point longitude in degrees.
-        emission_angle: LPI emission angle in degrees, used to reject
-            inconsistent spacecraft positions; ``None`` skips the check.
-        camera: ``"medium"`` (80 mm) or ``"high"`` (610 mm, middle sub-frame):
-            which camera the texture comes from.
+    Attributes
+    ----------
+    frame_id : str
+        Numeric LPI frame ID as text; also used as the hover label.
+    latitude : float
+        Principal point latitude in degrees (-90..90).
+    longitude : float
+        Principal point longitude in degrees.
+    altitude_km : float or None
+        Spacecraft altitude in km, or ``None`` if unknown.
+    texture : numpy.ndarray
+        2-D ``uint8`` grayscale array (rows top to bottom), 0 black to 255
+        white. Its aspect sets the frame's.
+    spacecraft_latitude : float or None
+        Spacecraft sub-point latitude in degrees, or ``None``. With the
+        longitude and altitude it enables projection.
+    spacecraft_longitude : float or None
+        Spacecraft sub-point longitude in degrees.
+    emission_angle : float or None
+        LPI emission angle in degrees, used to reject inconsistent spacecraft
+        positions; ``None`` skips the check.
+    camera : str
+        ``"medium"`` (80 mm) or ``"high"`` (610 mm, middle sub-frame): which
+        camera the texture comes from.
     """
 
     frame_id: str
@@ -136,13 +146,20 @@ class GlobeImage:
 class FrameCamera:
     """Pinhole camera of one frame, in scene units (Moon radius = 1).
 
-    Attributes:
-        position: Spacecraft position.
-        forward: Unit vector towards the principal point.
-        right: Unit vector along the image's columns (east for north-up).
-        up: Unit vector along the image's rows, towards the top of the image.
-        half_width: Half the frame width divided by the focal length.
-        half_height: Half the frame height divided by the focal length.
+    Attributes
+    ----------
+    position : numpy.ndarray
+        Spacecraft position.
+    forward : numpy.ndarray
+        Unit vector towards the principal point.
+    right : numpy.ndarray
+        Unit vector along the image's columns (east for north-up).
+    up : numpy.ndarray
+        Unit vector along the image's rows, towards the top of the image.
+    half_width : float
+        Half the frame width divided by the focal length.
+    half_height : float
+        Half the frame height divided by the focal length.
     """
 
     position: np.ndarray
@@ -153,7 +170,7 @@ class FrameCamera:
     half_height: float
 
     def rays(self, horizontal: np.ndarray, vertical: np.ndarray) -> np.ndarray:
-        """Unit ray directions for image-plane offsets in focal units."""
+        """Return unit ray directions for image-plane offsets in focal units."""
         directions = (
             self.forward
             + horizontal[..., None] * self.right
@@ -164,8 +181,12 @@ class FrameCamera:
     def hit_sphere(self, directions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Intersect rays with the unit sphere.
 
-        Returns:
-            The nearest hit points (NaN where a ray misses) and a mask of hits.
+        Returns
+        -------
+        points : numpy.ndarray
+            The nearest hit points (NaN where a ray misses).
+        hit : numpy.ndarray
+            Boolean mask of the rays that hit.
         """
         b = directions @ self.position
         c = float(self.position @ self.position) - 1.0
@@ -193,11 +214,15 @@ class FrameCamera:
 def camera_of(preview_url: str) -> str:
     """Tell which camera a frame's LPI preview (and thumbnail) comes from.
 
-    Args:
-        preview_url: URL chosen by :func:`orbiter.lpi.parse_frame_page`, which
-            prefers the medium-resolution ``_med`` image when there is one.
+    Parameters
+    ----------
+    preview_url : str
+        URL chosen by :func:`orbiter.lpi.parse_frame_page`, which prefers the
+        medium-resolution ``_med`` image when there is one.
 
-    Returns:
+    Returns
+    -------
+    str
         ``"medium"`` for ``..._med.jpg``, otherwise ``"high"``.
     """
     return "medium" if preview_url.lower().endswith("_med.jpg") else "high"
@@ -260,6 +285,7 @@ def _view(image: GlobeImage) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]
 
 
 def _has_position(image: GlobeImage) -> bool:
+    """Tell whether the image has the altitude and sub-point needed to project it."""
     return (
         image.altitude_km is not None
         and image.spacecraft_latitude is not None
@@ -274,13 +300,16 @@ def implied_emission_angle(image: GlobeImage) -> float | None:
     direction to the spacecraft; :func:`frame_camera` compares it with the
     LPI's own value.
 
-    Returns:
+    Returns
+    -------
+    float or None
         The angle (0..180), or ``None`` without a spacecraft position.
     """
     return _view(image)[3] if _has_position(image) else None
 
 
 def _build_camera(image: GlobeImage) -> FrameCamera | None:
+    """Build a frame's camera without caching it; see :func:`frame_camera`."""
     if not _has_position(image):
         return None
     position, target, forward, emission = _view(image)
@@ -381,14 +410,19 @@ def _match_sky(camera: FrameCamera, texture: np.ndarray) -> FrameCamera:
 class FrameGeometry:
     """Ground size of a frame and how it was placed on the globe.
 
-    Attributes:
-        width_km: Ground length across the image through its centre, in km.
-        height_km: Ground length along the image through its centre, in km.
-            For projected frames only the part that lands on the Moon counts.
-        projected: ``True`` if the frame is projected from the spacecraft,
-            ``False`` if it falls back to the approximate north-up patch.
-        implied_emission: Emission angle implied by the spacecraft position,
-            in degrees, or ``None`` without one.
+    Attributes
+    ----------
+    width_km : float
+        Ground length across the image through its centre, in km.
+    height_km : float
+        Ground length along the image through its centre, in km. For projected
+        frames only the part that lands on the Moon counts.
+    projected : bool
+        ``True`` if the frame is projected from the spacecraft, ``False`` if it
+        falls back to the approximate north-up patch.
+    implied_emission : float or None
+        Emission angle implied by the spacecraft position, in degrees, or
+        ``None`` without one.
     """
 
     width_km: float
@@ -405,7 +439,9 @@ def _border_distances(camera: FrameCamera, angles: np.ndarray) -> np.ndarray:
     π/2 towards ``up``) it ends at the frame's edge or, before that, at the
     limb, found by ``LIMB_BISECTIONS`` bisection steps.
 
-    Returns:
+    Returns
+    -------
+    numpy.ndarray
         Distances in focal units, one per angle.
     """
     cosines, sines = np.cos(angles), np.sin(angles)
@@ -415,6 +451,7 @@ def _border_distances(camera: FrameCamera, angles: np.ndarray) -> np.ndarray:
         )
 
     def hits(distance: np.ndarray) -> np.ndarray:
+        """Return, per direction, whether the ray at ``distance`` hits the Moon."""
         return camera.hit_sphere(camera.rays(distance * cosines, distance * sines))[1]
 
     inside, outside = np.zeros_like(edge), edge.copy()
@@ -487,13 +524,19 @@ def selenographic_to_cartesian(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Convert selenographic degrees to scene coordinates.
 
-    Args:
-        latitude_degrees: Latitude in degrees, north positive; scalar or array.
-        longitude_degrees: Longitude in degrees, east positive; any equivalent
-            value (``-170`` and ``190`` give the same point).
-        radius: Distance from the centre, in Moon radii (1 is the surface).
+    Parameters
+    ----------
+    latitude_degrees : float or numpy.ndarray
+        Latitude in degrees, north positive; scalar or array.
+    longitude_degrees : float or numpy.ndarray
+        Longitude in degrees, east positive; any equivalent value (``-170``
+        and ``190`` give the same point).
+    radius : float, default 1.0
+        Distance from the centre, in Moon radii (1 is the surface).
 
-    Returns:
+    Returns
+    -------
+    tuple of numpy.ndarray
         ``(x, y, z)``: ``x`` towards 0° E, ``y`` towards 90° E, ``z`` towards
         the north pole; arrays shaped like the inputs. Inverse of
         :func:`cartesian_to_selenographic`.
@@ -514,8 +557,10 @@ def cartesian_to_selenographic(x: float, y: float, z: float) -> tuple[float, flo
     slightly above the unit sphere). Longitude is returned in -180..180.
     Inverse of :func:`selenographic_to_cartesian`.
 
-    Raises:
-        ZeroDivisionError: For the centre point ``(0, 0, 0)``.
+    Raises
+    ------
+    ZeroDivisionError
+        For the centre point ``(0, 0, 0)``.
     """
     radius = math.sqrt(x * x + y * y + z * z)
     return math.degrees(math.asin(z / radius)), math.degrees(math.atan2(y, x))
@@ -528,11 +573,16 @@ def patch_width_degrees(altitude_km: float | None, camera: str = "medium") -> fl
     from the medium-resolution camera looking straight down, scaled by focal
     length for the high-resolution one.
 
-    Args:
-        altitude_km: Spacecraft altitude in km, or ``None`` if unknown.
-        camera: ``"medium"`` or ``"high"``.
+    Parameters
+    ----------
+    altitude_km : float or None
+        Spacecraft altitude in km, or ``None`` if unknown.
+    camera : str, default "medium"
+        ``"medium"`` or ``"high"``.
 
-    Returns:
+    Returns
+    -------
+    float
         ``FALLBACK_PATCH_DEGREES`` when the altitude is unknown; otherwise the
         estimate clamped to ``MIN_PATCH_DEGREES``..``MAX_PATCH_DEGREES``.
     """
@@ -590,6 +640,7 @@ def image_at(
 
 
 def _base_sphere() -> go.Surface:
+    """Return the grey base sphere that the frames sit on."""
     latitudes, longitudes = np.meshgrid(
         np.linspace(-90, 90, 73), np.linspace(-180, 180, 145), indexing="ij"
     )
@@ -650,6 +701,7 @@ def _patch_grid(
 
 
 def _image_surface(image: GlobeImage, radius: float) -> go.Surface:
+    """Return one frame's texture as a ``Surface``, used for the selected photo."""
     x_coordinates, y_coordinates, z_coordinates = _patch_grid(image, radius)
     return go.Surface(
         x=x_coordinates.astype(np.float32),
@@ -838,7 +890,9 @@ def footprint_outline(image: GlobeImage) -> list[tuple[float, float]]:
     ``OUTLINE_RAYS`` directions from it, plus the four corners; on each, the
     limb is found by bisection.
 
-    Returns:
+    Returns
+    -------
+    list of tuple of float
         ``(latitude, longitude)`` pairs in degrees going once round the
         footprint, longitudes in -180..180.
     """
@@ -982,6 +1036,7 @@ def _reference_marks() -> list[go.Scatter3d]:
 def _camera_eye(
     latitude: float, longitude: float, distance: float = CAMERA_DISTANCE
 ) -> dict[str, float]:
+    """Return the Plotly eye position of a point at ``distance`` from the centre."""
     x_coordinate, y_coordinate, z_coordinate = selenographic_to_cartesian(
         latitude, longitude, distance
     )
@@ -995,15 +1050,21 @@ def _camera_eye(
 def focus_camera(
     latitude: float, longitude: float, distance: float = CAMERA_DISTANCE
 ) -> dict[str, dict[str, float]]:
-    """Plotly scene camera looking at a point, north up.
+    """Return a Plotly scene camera looking at a point, north up.
 
-    Args:
-        latitude: Latitude of the point to face, in degrees.
-        longitude: Longitude of the point to face, in degrees.
-        distance: Eye distance from the centre, in Plotly eye units (the
-            starting view is ``CAMERA_DISTANCE``); keeps the current zoom.
+    Parameters
+    ----------
+    latitude : float
+        Latitude of the point to face, in degrees.
+    longitude : float
+        Longitude of the point to face, in degrees.
+    distance : float, default CAMERA_DISTANCE
+        Eye distance from the centre, in Plotly eye units (the starting view is
+        ``CAMERA_DISTANCE``); keeps the current zoom.
 
-    Returns:
+    Returns
+    -------
+    dict
         A ``scene.camera`` dict with ``eye``, ``center`` and ``up``.
     """
     return {
@@ -1051,15 +1112,21 @@ def make_globe(
     With ``show_labels``, each photo carries its frame ID at its centre and
     the selection's label is drawn in the accent colour above its marker.
 
-    Args:
-        selected: The frame shown in the side panel, drawn on top.
-        tiles: The mission's photos.
-        hidden: Frame IDs not to draw.
-        show_labels: Whether to label each photo with its frame ID.
-        camera: Plotly ``scene.camera`` to use, e.g. the user's current view;
-            by default the camera faces the selection (or the first tile) from
-            ``CAMERA_DISTANCE``. ``uirevision`` stays constant, so the view
-            only moves when this camera changes.
+    Parameters
+    ----------
+    selected : GlobeImage, optional
+        The frame shown in the side panel, drawn on top.
+    tiles : iterable of GlobeImage, optional
+        The mission's photos.
+    hidden : collection of str, optional
+        Frame IDs not to draw.
+    show_labels : bool, default True
+        Whether to label each photo with its frame ID.
+    camera : dict, optional
+        Plotly ``scene.camera`` to use, e.g. the user's current view; by default
+        the camera faces the selection (or the first tile) from
+        ``CAMERA_DISTANCE``. ``uirevision`` stays constant, so the view only
+        moves when this camera changes.
     """
     tiles = sorted(tiles, key=lambda tile: tile.frame_id)
     images = visible_images(selected, tiles, hidden)

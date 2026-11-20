@@ -1,3 +1,5 @@
+"""Tests for the CSV and GeoJSON exports of a mission's frames."""
+
 import csv
 import io
 import json
@@ -10,6 +12,7 @@ from orbiter.globe import GlobeImage
 
 
 def _image(frame_id="1041", longitude=39.15, spacecraft=(4.29, 41.17), **extra):
+    """Build a projected GlobeImage with a 65 x 55 texture."""
     return GlobeImage(
         frame_id=frame_id,
         latitude=3.30,
@@ -23,6 +26,7 @@ def _image(frame_id="1041", longitude=39.15, spacecraft=(4.29, 41.17), **extra):
 
 
 def _rows(text):
+    """Parse CSV text into a list of row dicts."""
     return list(csv.DictReader(io.StringIO(text)))
 
 

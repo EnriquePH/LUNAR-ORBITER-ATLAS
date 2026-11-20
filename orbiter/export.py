@@ -37,6 +37,7 @@ CSV_FIELDS = (
 
 
 def _rounded(value: float | None, digits: int) -> float | None:
+    """Round ``value`` to ``digits`` decimals; ``None`` stays ``None``."""
     return None if value is None else round(value, digits)
 
 
@@ -46,12 +47,17 @@ def mission_csv(
 ) -> str:
     """Build a CSV table with one row per frame, sorted by frame ID.
 
-    Args:
-        images: The mission's globe images.
-        metadata: LPI page metadata by frame ID, as a mapping or a lookup
-            function; frames without it keep the fields their image carries.
+    Parameters
+    ----------
+    images : iterable of GlobeImage
+        The mission's globe images.
+    metadata : callable or mapping
+        LPI page metadata by frame ID, as a mapping or a lookup function;
+        frames without it keep the fields their image carries.
 
-    Returns:
+    Returns
+    -------
+    str
         CSV text with the ``CSV_FIELDS`` columns; unknown values are empty.
         Footprints are in km and angles in degrees.
     """
@@ -119,7 +125,9 @@ def footprints_geojson(images: Iterable[GlobeImage]) -> str:
     as properties. Frames whose outline has fewer than three points are
     skipped.
 
-    Returns:
+    Returns
+    -------
+    str
         The collection as JSON text.
     """
     features = []

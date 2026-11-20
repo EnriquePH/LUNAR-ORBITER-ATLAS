@@ -11,10 +11,14 @@ ORBITER_URL = "https://www.lpi.usra.edu/resources/lunarorbiter"
 def mission_url(num: int | str) -> str:
     """Return the gallery page listing a mission's frames.
 
-    Args:
-        num: Mission number, normally 1 to ``MISSIONS_NUM``. Not validated.
+    Parameters
+    ----------
+    num : int or str
+        Mission number, normally 1 to ``MISSIONS_NUM``. Not validated.
 
-    Returns:
+    Returns
+    -------
+    str
         A URL such as ``.../lunarorbiter/mission/?1``.
     """
     return f"{ORBITER_URL}/mission/?{num}"
@@ -23,10 +27,14 @@ def mission_url(num: int | str) -> str:
 def frame_url(num: int | str) -> str:
     """Return the LPI page of a single frame.
 
-    Args:
-        num: Frame identifier such as ``"1041"``. Not validated.
+    Parameters
+    ----------
+    num : int or str
+        Frame identifier such as ``"1041"``. Not validated.
 
-    Returns:
+    Returns
+    -------
+    str
         A URL such as ``.../lunarorbiter/frame/?1041``.
     """
     return f"{ORBITER_URL}/frame/?{num}"

@@ -1,3 +1,5 @@
+"""Tests for the frame cache, the background mission loader and the CLI."""
+
 import json
 import threading
 from io import BytesIO
@@ -24,18 +26,22 @@ Longitude: 39.15° <a href="../images/preview/{id}_med.jpg">Preview</a>
 
 
 def _jpeg(size=(120, 141)) -> bytes:
+    """Return a grey JPEG, the size of an LPI thumbnail, as bytes."""
     buffer = BytesIO()
     Image.new("L", size, color=90).save(buffer, format="JPEG")
     return buffer.getvalue()
 
 
 class FakeSession:
+    """HTTP session stand-in that serves frame pages and thumbnails offline."""
+
     def __init__(self, fail_ids=()):
         self.headers = {}
         self.urls = []
         self.fail_ids = set(fail_ids)
 
     def get(self, url, timeout):
+        """Serve the page or thumbnail for ``url``; fail for IDs in ``fail_ids``."""
         self.urls.append(url)
         frame_id = url.rsplit("?", 1)[-1].rsplit("/", 1)[-1].removesuffix(".jpg")
         if frame_id in self.fail_ids:
@@ -48,11 +54,13 @@ class FakeSession:
 
 @pytest.fixture
 def session():
+    """Return a FakeSession that serves every frame."""
     return FakeSession()
 
 
 @pytest.fixture
 def store(tmp_path, session):
+    """Return a TileStore in ``tmp_path`` that uses the fake session."""
     return TileStore(tmp_path, delay=0, session_factory=lambda: session)
 
 
@@ -75,6 +83,7 @@ def test_tile_store_downloads_once_then_reads_disk(store, session, tmp_path):
 
 
 def _wait_until_finished(loader, mission):
+    """Poll ``loader`` until ``mission`` finishes and return its progress."""
     for _ in range(200):
         if loader.progress(mission).finished:
             return loader.progress(mission)
@@ -90,6 +99,7 @@ def test_tile_store_spaces_request_starts(tmp_path, session, monkeypatch):
     original_get = session.get
 
     def recording_get(url, timeout):
+        """Record the scheduled start of each request, then fetch as usual."""
         starts.append(store._next_request)
         return original_get(url, timeout)
 
@@ -116,6 +126,7 @@ def test_mission_loader_collects_tiles_and_counts_failures(store, session, monke
 
 def test_mission_loader_reports_listing_error_and_allows_retry(store, monkeypatch):
     def fail(mission):
+        """Simulate a listing that cannot connect."""
         raise requests.ConnectionError("sin red")
 
     monkeypatch.setattr("orbiter.catalog.fetch_mission_frames", fail)

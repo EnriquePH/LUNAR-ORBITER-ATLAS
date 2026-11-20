@@ -186,12 +186,18 @@ def normalize_language(lang: str | None, default: str = "es") -> str:
 def t(lang: str, key: str, **params: object) -> str:
     """Return the text for ``key`` in ``lang``, formatted with ``params``.
 
-    Args:
-        lang: Language code; unsupported values fall back to Spanish.
-        key: A key of ``TEXTS``, e.g. ``"status_mission_frames"``.
-        **params: Values for the ``{placeholders}`` in the text.
+    Parameters
+    ----------
+    lang : str
+        Language code; unsupported values fall back to Spanish.
+    key : str
+        A key of ``TEXTS``, e.g. ``"status_mission_frames"``.
+    **params : object
+        Values for the ``{placeholders}`` in the text.
 
-    Raises:
-        KeyError: If ``key`` does not exist or a placeholder has no value.
+    Raises
+    ------
+    KeyError
+        If ``key`` does not exist or a placeholder has no value.
     """
     return TEXTS[normalize_language(lang)][key].format(**params)

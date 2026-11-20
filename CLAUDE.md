@@ -123,8 +123,10 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
 - No subir descargas: `/data/`, `/outputs/` y `/draft/` están en `.gitignore`.
   MIT cubre solo el código; imágenes del LPI y texto de Wikipedia tienen su licencia.
 - Ruff: `line-length = 88` con `E501` y `ruff format`.
-- Docstrings estilo **Google** obligatorios en la API pública (Ruff `D`; `D107`
-  desactivado: los argumentos del constructor van en el docstring de la clase).
+- Docstrings estilo **NumPy** en todo módulo, clase y función, también los privados
+  (norma `01-PYTHON`, 2026-11-15; Ruff `D` con `convention = "numpy"`; `D107`
+  desactivado: los argumentos del constructor van en el docstring de la clase; en
+  `tests/`, las funciones `test_*` no lo necesitan, el módulo sí).
   Indica unidades (grados, km), campos opcionales, caché y excepciones.
 - Un callback con N `Output` devuelve siempre N valores, también en ramas de error.
 - Comprobar la UI: `chromium-browser --headless --remote-debugging-port=9333` (snap:

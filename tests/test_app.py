@@ -1,3 +1,5 @@
+"""Tests for the Dash callbacks and page builders, called directly with fakes."""
+
 from io import BytesIO
 
 import numpy as np
@@ -35,6 +37,7 @@ STATUS_INDEX = 4
 
 
 def _jpeg_bytes(size: tuple[int, int] = (48, 32)) -> bytes:
+    """Return a grey JPEG of ``size`` as bytes."""
     image = Image.new("L", size, color=160)
     image_bytes = BytesIO()
     image.save(image_bytes, format="JPEG")
@@ -42,6 +45,7 @@ def _jpeg_bytes(size: tuple[int, int] = (48, 32)) -> bytes:
 
 
 def _frame(latitude=3.3, image_size=(48, 32), frame_id="1041", **extra):
+    """Build an OrbiterFrame with a grey JPEG preview."""
     return OrbiterFrame(
         frame_id=frame_id,
         mission="Lunar Orbiter 1",
@@ -54,6 +58,7 @@ def _frame(latitude=3.3, image_size=(48, 32), frame_id="1041", **extra):
 
 
 def _tile(frame_id, latitude, longitude):
+    """Build a small GlobeImage at the given position, with a black texture."""
     return GlobeImage(
         frame_id=frame_id,
         latitude=latitude,
@@ -64,25 +69,31 @@ def _tile(frame_id, latitude, longitude):
 
 
 class FakeLoader:
+    """Stand-in for MissionLoader: fixed progress, records the started missions."""
+
     def __init__(self, progress=None):
         self.started = []
         self._progress = progress or MissionProgress()
 
     def start(self, mission):
+        """Record the mission start without loading anything."""
         self.started.append(mission)
 
     def progress(self, mission):
+        """Return the fixed progress, whatever the mission."""
         return self._progress
 
 
 @pytest.fixture
 def loader(monkeypatch):
+    """Replace the app's LOADER with a FakeLoader."""
     fake = FakeLoader()
     monkeypatch.setattr(app_module, "LOADER", fake)
     return fake
 
 
 def _row_values(rows) -> dict[str, str]:
+    """Map the label of each metadata row to its value."""
     return {
         row.children[0].children: row.children[1].children
         for row in rows
@@ -122,6 +133,7 @@ def test_update_frame_returns_all_outputs_on_success(monkeypatch):
 )
 def test_update_frame_reports_errors_without_changing_view(monkeypatch, error, prefix):
     def fail(frame_id):
+        """Raise the stored error."""
         raise error
 
     monkeypatch.setattr(app_module, "fetch_frame", fail)
@@ -197,6 +209,7 @@ def test_list_mission_frames_starts_mosaic(monkeypatch, loader):
 
 def test_list_mission_frames_reports_connection_error(monkeypatch, loader):
     def fail(mission):
+        """Raise a timeout, as a slow LPI would."""
         raise requests.Timeout("lento")
 
     monkeypatch.setattr(app_module, "fetch_mission_frames", fail)
@@ -293,6 +306,7 @@ def test_update_frame_reports_status_in_english(monkeypatch):
 
 def test_update_frame_translates_invalid_id(monkeypatch):
     def fail(frame_id):
+        """Raise the LPI error for a non-numeric ID."""
         raise LpiError("invalid_frame_id")
 
     monkeypatch.setattr(app_module, "fetch_frame", fail)
@@ -410,6 +424,7 @@ def test_render_globe_follows_the_labels_switch(monkeypatch):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
 
     def names(value):
+        """Return the trace names drawn for a labels checklist value."""
         figure, *_ = render_globe("1041", 0, None, value)
         return {trace.name for trace in figure.data}
 
@@ -426,6 +441,7 @@ FAR_SIDE = {
 
 
 def _eye(figure):
+    """Return the camera eye of a figure as a NumPy vector."""
     eye = figure.layout.scene.camera.eye
     return np.array([eye.x, eye.y, eye.z])
 

@@ -1,3 +1,5 @@
+"""Tests for the LPI client and parser, with HTTP calls replaced by fakes."""
+
 from types import SimpleNamespace
 
 import pytest
@@ -99,6 +101,7 @@ def test_fetch_mission_frames_downloads_once(monkeypatch):
     calls = []
 
     def fake_get(url, **kwargs):
+        """Record the requested URL and return a canned response."""
         calls.append(url)
         return SimpleNamespace(text=MISSION_PAGE, raise_for_status=lambda: None)
 
@@ -117,6 +120,7 @@ def test_parse_frame_page_requires_principal_point():
 
 def test_fetch_frame_rejects_invalid_id_without_network(monkeypatch):
     def fail_if_requested(*args, **kwargs):
+        """Fail the test if any request is made."""
         pytest.fail("No debe hacer solicitudes para un ID inválido")
 
     monkeypatch.setattr("orbiter.lpi.requests.get", fail_if_requested)
@@ -136,6 +140,7 @@ def test_fetch_frame_downloads_page_and_preview(monkeypatch):
     calls = []
 
     def fake_get(url, **kwargs):
+        """Record the URL and options, then return a canned page or preview."""
         calls.append((url, kwargs))
         return next(responses)
 
@@ -162,6 +167,7 @@ def test_fetch_frame_reuses_cached_result(monkeypatch):
     calls = []
 
     def fake_get(url, **kwargs):
+        """Record the requested URL and return a canned response."""
         calls.append(url)
         return next(responses)
 

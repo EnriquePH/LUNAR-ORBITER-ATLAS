@@ -1,3 +1,5 @@
+"""Tests for loading and validating config.json."""
+
 import json
 
 import pytest
@@ -6,6 +8,7 @@ from orbiter.config import AppConfig, load_config
 
 
 def _write(tmp_path, data):
+    """Write ``data`` as JSON to ``config.json`` in ``tmp_path``; return the path."""
     path = tmp_path / "config.json"
     path.write_text(json.dumps(data))
     return path

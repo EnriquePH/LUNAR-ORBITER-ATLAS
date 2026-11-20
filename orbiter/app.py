@@ -51,6 +51,7 @@ LOADER = MissionLoader(TileStore(default_cache_dir()))
 
 
 def _thumbnail(image_bytes: bytes) -> Image.Image:
+    """Return a grayscale copy of the image, shrunk to fit ``TEXTURE_SIZE``."""
     image = Image.open(BytesIO(image_bytes)).convert("L")
     image.thumbnail(TEXTURE_SIZE, Image.Resampling.LANCZOS)
     return image
@@ -84,6 +85,7 @@ def describe_error(lang: str, error: Exception) -> str:
 
 
 def _metadata_row(label: str, value: str = "—") -> html.Div:
+    """Build one label/value row of the side-panel metadata."""
     return html.Div(
         [
             html.Span(label, className="meta-label"),
@@ -94,12 +96,14 @@ def _metadata_row(label: str, value: str = "—") -> html.Div:
 
 
 def _degrees(*values: float | None) -> str:
+    """Format angles in degrees separated by slashes; ``"—"`` if any is missing."""
     if any(value is None for value in values):
         return "—"
     return "  /  ".join(f"{value:.2f}°" for value in values)
 
 
 def _footprint(geometry: FrameGeometry, lang: str) -> str:
+    """Describe the frame's footprint in km, marked as approximate unless projected."""
     key = "footprint_projected" if geometry.projected else "footprint_approximate"
     return t(
         lang, key, width=f"{geometry.width_km:.1f}", height=f"{geometry.height_km:.1f}"
@@ -131,11 +135,15 @@ def metadata_rows(
 ) -> list[html.Div]:
     """Build the side-panel rows; fields missing from the LPI page show "—".
 
-    Args:
-        frame: The frame from the LPI.
-        lang: Interface language.
-        image: The frame's globe image, if already built; otherwise it is built
-            from ``frame`` to measure the footprint and check the geometry.
+    Parameters
+    ----------
+    frame : OrbiterFrame
+        The frame from the LPI.
+    lang : str, default "es"
+        Interface language.
+    image : GlobeImage, optional
+        The frame's globe image, if already built; otherwise it is built
+        from ``frame`` to measure the footprint and check the geometry.
     """
     image = image or globe_image(frame)
     geometry = frame_geometry(image)
@@ -217,6 +225,7 @@ def language_from_search(search: str | None) -> str:
 
 
 def _language_switch(lang: str) -> html.Nav:
+    """Build the links that switch the interface language, marking the current one."""
     return html.Nav(
         [
             html.A(
@@ -235,6 +244,7 @@ def _language_switch(lang: str) -> html.Nav:
 
 
 def _atlas(lang: str) -> html.Main:
+    """Build the atlas tab: the globe on the left and the side panel on the right."""
     return html.Main(
         [
             html.Section(
@@ -651,17 +661,26 @@ def render_globe(
     come from a click on the globe (selector, typed ID, random) turns the view
     to face the photo, keeping the zoom.
 
-    Args:
-        selected_id: The frame in the side panel.
-        _mosaic_count: Tiles rendered so far; changes trigger a redraw.
-        mission: The selected mission.
-        show_labels: The labels checklist value; IDs are drawn when it
-            contains ``"on"``.
-        current_camera: The user's ``scene.camera`` (from ``globe-camera``).
-        clicked_id: The photo last clicked on the globe.
-        focused_id: The selection the view last turned to.
+    Parameters
+    ----------
+    selected_id : str or None
+        The frame in the side panel.
+    _mosaic_count : int
+        Tiles rendered so far; changes trigger a redraw.
+    mission : int or None
+        The selected mission.
+    show_labels : list of str or None
+        The labels checklist value; IDs are drawn when it contains ``"on"``.
+    current_camera : dict or None
+        The user's ``scene.camera`` (from ``globe-camera``).
+    clicked_id : str or None
+        The photo last clicked on the globe.
+    focused_id : str or None
+        The selection the view last turned to.
 
-    Returns:
+    Returns
+    -------
+    tuple
         The figure, the selection now faced, the camera used, and the cleared
         click marker (``None``) once a new selection has been handled.
     """
@@ -832,6 +851,7 @@ def _cached_metadata(frame_id: str) -> FrameMetadata | None:
 
 
 def _mission_tiles(mission: int | None) -> list[GlobeImage]:
+    """Return the mission's loaded mosaic tiles, or an empty list without a mission."""
     return list(LOADER.progress(mission).tiles.values()) if mission else []
 
 

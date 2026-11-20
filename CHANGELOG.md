@@ -11,6 +11,9 @@ All notable changes to Lunar Orbiter Atlas are listed here. Versions follow
 
 - The Dash app and the site no longer load Google Fonts (DM Mono from the system).
 
+- Docstrings in NumPy style on every module, class and function, tests included
+  (were Google style); Ruff `D` with `convention = "numpy"`.
+
 ## [1.0.0] — 2026-09-26
 
 First release.

@@ -58,12 +58,14 @@ def thumbnail_url(frame_id: str) -> str:
 
 
 def _texture(image_bytes: bytes) -> np.ndarray:
+    """Decode image bytes into a grayscale uint8 array shrunk to fit ``TILE_SIZE``."""
     image = Image.open(BytesIO(image_bytes)).convert("L")
     image.thumbnail(TILE_SIZE, Image.Resampling.LANCZOS)
     return np.asarray(image, dtype=np.uint8)
 
 
 def _new_session() -> requests.Session:
+    """Create an HTTP session that sends the app's ``USER_AGENT``."""
     session = requests.Session()
     session.headers["User-Agent"] = USER_AGENT
     return session
@@ -83,11 +85,14 @@ class TileStore:
     Safe to call from several threads: each thread gets its own HTTP session,
     and all threads share the rate limit.
 
-    Args:
-        cache_dir: Root of the cache (see the module docstring for layout).
-        delay: Minimum seconds between the starts of two requests.
-        session_factory: Creates the HTTP session for each thread; tests
-            replace it with a fake.
+    Parameters
+    ----------
+    cache_dir : Path
+        Root of the cache (see the module docstring for layout).
+    delay : float, default REQUEST_DELAY_SECONDS
+        Minimum seconds between the starts of two requests.
+    session_factory : callable, default _new_session
+        Creates the HTTP session for each thread; tests replace it with a fake.
     """
 
     def __init__(
@@ -104,6 +109,10 @@ class TileStore:
         self._next_request = 0.0
 
     def _get(self, url: str) -> requests.Response:
+        """GET a URL with this thread's session, after the shared rate-limit wait.
+
+        Raises ``requests.HTTPError`` for error status codes.
+        """
         with self._rate_lock:
             start = max(time.monotonic(), self._next_request)
             self._next_request = start + self.delay
@@ -118,12 +127,17 @@ class TileStore:
     def metadata(self, frame_id: str) -> FrameMetadata | None:
         """Return a frame's cached page metadata without downloading anything.
 
-        Returns:
+        Returns
+        -------
+        FrameMetadata or None
             The parsed page, or ``None`` if it is not cached.
 
-        Raises:
-            OSError: If the cached file cannot be read.
-            ValueError: If it is corrupt.
+        Raises
+        ------
+        OSError
+            If the cached file cannot be read.
+        ValueError
+            If it is corrupt.
         """
         path = self.cache_dir / "frames" / f"{frame_id}.json"
         return json.loads(path.read_text()) if path.exists() else None
@@ -134,18 +148,27 @@ class TileStore:
         Makes up to two requests (page and thumbnail); none when both files
         are cached.
 
-        Args:
-            frame_id: Numeric LPI frame ID.
+        Parameters
+        ----------
+        frame_id : str
+            Numeric LPI frame ID.
 
-        Returns:
+        Returns
+        -------
+        GlobeImage
             The tile, with its texture reduced to at most ``TILE_SIZE``.
 
-        Raises:
-            requests.RequestException: On HTTP errors, timeouts or no connection.
-            orbiter.lpi.LpiError: If the page lacks coordinates or a preview.
-            OSError: If the cache cannot be read or written, or the image
-                cannot be decoded.
-            ValueError: If a cached JSON file is corrupt (delete it to retry).
+        Raises
+        ------
+        requests.RequestException
+            On HTTP errors, timeouts or no connection.
+        orbiter.lpi.LpiError
+            If the page lacks coordinates or a preview.
+        OSError
+            If the cache cannot be read or written, or the image cannot be
+            decoded.
+        ValueError
+            If a cached JSON file is corrupt (delete it to retry).
         """
         metadata_path = self.cache_dir / "frames" / f"{frame_id}.json"
         thumbnail_path = self.cache_dir / "thumbs" / f"{frame_id}.jpg"
@@ -180,14 +203,20 @@ class TileStore:
 class MissionProgress:
     """State of one mission's download.
 
-    Attributes:
-        total: Frames listed for the mission; 0 until the list has arrived.
-        failed: Frames that could not be loaded; the rest of the mission
-            still loads. They are retried when the app restarts.
-        finished: True once every frame has been tried, or the listing failed.
-        error: Why the mission list could not be fetched; frames are not
-            attempted then. ``None`` otherwise.
-        tiles: Loaded tiles by frame ID.
+    Attributes
+    ----------
+    total : int
+        Frames listed for the mission; 0 until the list has arrived.
+    failed : int
+        Frames that could not be loaded; the rest of the mission still loads.
+        They are retried when the app restarts.
+    finished : bool
+        True once every frame has been tried, or the listing failed.
+    error : Exception or None
+        Why the mission list could not be fetched; frames are not attempted
+        then. ``None`` otherwise.
+    tiles : dict of str to GlobeImage
+        Loaded tiles by frame ID.
     """
 
     total: int = 0
@@ -200,8 +229,10 @@ class MissionProgress:
 class MissionLoader:
     """Load whole missions in background threads; safe to poll from callbacks.
 
-    Args:
-        store: Where tiles are read from and cached.
+    Parameters
+    ----------
+    store : TileStore
+        Where tiles are read from and cached.
     """
 
     def __init__(self, store: TileStore):
@@ -241,6 +272,10 @@ class MissionLoader:
             )
 
     def _run(self, mission: int) -> None:
+        """Fetch the mission's frame list, then load every frame into its progress.
+
+        Runs in a background thread; a listing error is stored in the progress.
+        """
         progress = self._missions[mission]
         try:
             frame_ids = fetch_mission_frames(mission)
@@ -254,6 +289,7 @@ class MissionLoader:
             progress.total = len(frame_ids)
 
         def load(frame_id: str) -> None:
+            """Load one frame into the progress, counting it as failed on error."""
             try:
                 tile = self.store.load(frame_id)
             except (requests.RequestException, ValueError, OSError):
@@ -275,7 +311,9 @@ def download(missions: list[int], poll_seconds: float = 2.0) -> int:
     Already cached frames are read from disk, so running it again is cheap.
     Live progress is only shown on a terminal; logs get one line per mission.
 
-    Returns:
+    Returns
+    -------
+    int
         The number of frames that could not be loaded (0 when all succeed).
     """
     loader = MissionLoader(TileStore(default_cache_dir()))

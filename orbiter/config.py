@@ -19,10 +19,14 @@ from orbiter.i18n import LANGUAGES
 class AppConfig:
     """Validated settings; each field defaults to the value shown.
 
-    Attributes:
-        host: Interface the server listens on.
-        port: TCP port, 1–65535.
-        language: Default interface language, ``"es"`` or ``"en"``.
+    Attributes
+    ----------
+    host : str
+        Interface the server listens on.
+    port : int
+        TCP port, 1–65535.
+    language : str
+        Default interface language, ``"es"`` or ``"en"``.
     """
 
     host: str = "127.0.0.1"
@@ -46,17 +50,23 @@ def load_config(path: Path | None = None) -> AppConfig:
     A missing file, or a key left out of it, falls back to the defaults of
     :class:`AppConfig`. Unknown keys are rejected so that typos are noticed.
 
-    Args:
-        path: File to read; defaults to :func:`config_path`.
+    Parameters
+    ----------
+    path : Path, optional
+        File to read; defaults to :func:`config_path`.
 
-    Returns:
+    Returns
+    -------
+    AppConfig
         The validated settings.
 
-    Raises:
-        json.JSONDecodeError: If the file is not valid JSON.
-        ValueError: For unknown keys, an empty or non-string ``host``, a
-            ``port`` that is not an integer from 1 to 65535, or an unsupported
-            ``language``.
+    Raises
+    ------
+    json.JSONDecodeError
+        If the file is not valid JSON.
+    ValueError
+        For unknown keys, an empty or non-string ``host``, a ``port`` that is
+        not an integer from 1 to 65535, or an unsupported ``language``.
     """
     path = Path(path) if path is not None else config_path()
     if not path.exists():

@@ -1,3 +1,5 @@
+"""Tests for the globe figure, the coordinate helpers and frame projection."""
+
 import math
 import re
 from dataclasses import replace
@@ -40,6 +42,7 @@ from orbiter.globe import (
 def _image(
     frame_id="1041", latitude=3.3, longitude=39.15, altitude_km=256.43, size=(32, 24)
 ):
+    """Build a GlobeImage with a flat grey texture and no spacecraft position."""
     return GlobeImage(
         frame_id=frame_id,
         latitude=latitude,
@@ -124,6 +127,7 @@ REFERENCES = {"equator", "poles", "labels"}
 
 
 def _without_references(figure):
+    """Return the traces of ``figure`` that are not reference marks."""
     return [trace for trace in figure.data if trace.name not in REFERENCES]
 
 
@@ -264,6 +268,7 @@ def test_tile_textures_respect_the_vertex_budget():
 def _projected(
     latitude=3.30, longitude=39.15, altitude_km=256.43, spacecraft=(4.29, 41.17)
 ):
+    """Build a projected GlobeImage with a 65 x 55 texture."""
     return GlobeImage(
         frame_id="1041",
         latitude=latitude,
@@ -276,6 +281,7 @@ def _projected(
 
 
 def _arc_km(first, second):
+    """Return the great-circle distance in km between two unit vectors."""
     return math.acos(np.clip(first @ second, -1, 1)) * MOON_RADIUS_KM
 
 
