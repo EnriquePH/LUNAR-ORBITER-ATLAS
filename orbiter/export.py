@@ -1,8 +1,9 @@
 """Export a mission's frames: metadata as CSV and footprints as GeoJSON.
 
 Both exports cover the frames loaded on the globe. Coordinates are
-selenographic degrees (north and east positive), not WGS 84: GeoJSON readers
-treat them as plain longitude/latitude pairs, which is what a lunar map needs.
+selenographic degrees (north and east positive), not WGS 84: GeoJSON
+readers treat them as plain longitude/latitude pairs, which is what a
+lunar map needs.
 """
 
 from __future__ import annotations
@@ -37,13 +38,17 @@ CSV_FIELDS = (
 
 
 def _rounded(value: float | None, digits: int) -> float | None:
-    """Round ``value`` to ``digits`` decimals; ``None`` stays ``None``."""
+    """Round ``value`` to ``digits`` decimals.
+
+    ``None`` stays ``None``.
+    """
     return None if value is None else round(value, digits)
 
 
 def mission_csv(
     images: Iterable[GlobeImage],
-    metadata: Callable[[str], FrameMetadata | None] | Mapping[str, FrameMetadata],
+    metadata: Callable[[str], FrameMetadata | None]
+    | Mapping[str, FrameMetadata],
 ) -> str:
     """Build a CSV table with one row per frame, sorted by frame ID.
 
@@ -52,14 +57,14 @@ def mission_csv(
     images : iterable of GlobeImage
         The mission's globe images.
     metadata : callable or mapping
-        LPI page metadata by frame ID, as a mapping or a lookup function;
-        frames without it keep the fields their image carries.
+        LPI page metadata by frame ID, as a mapping or a lookup
+        function; frames without it keep the fields their image carries.
 
     Returns
     -------
     str
-        CSV text with the ``CSV_FIELDS`` columns; unknown values are empty.
-        Footprints are in km and angles in degrees.
+        CSV text with the ``CSV_FIELDS`` columns; unknown values are
+        empty. Footprints are in km and angles in degrees.
     """
     lookup = metadata.get if isinstance(metadata, Mapping) else metadata
     output = io.StringIO()
@@ -91,11 +96,11 @@ def mission_csv(
 def _ring(outline: list[tuple[float, float]]) -> list[list[float]]:
     """Close an outline as a GeoJSON ring, with continuous longitudes.
 
-    Longitudes are unwrapped from the first point, so a frame that crosses the
-    180° meridian stays one polygon (some of its longitudes exceed ±180). A
-    frame around a pole winds through 360°; its ring is closed along the pole
-    (latitude ±90). The ring runs counterclockwise, as RFC 7946 asks of
-    exterior rings.
+    Longitudes are unwrapped from the first point, so a frame that
+    crosses the 180° meridian stays one polygon (some of its longitudes
+    exceed ±180). A frame around a pole winds through 360°; its ring is
+    closed along the pole (latitude ±90). The ring runs
+    counterclockwise, as RFC 7946 asks of exterior rings.
     """
     ring: list[list[float]] = []
     for latitude, longitude in outline:
@@ -107,9 +112,13 @@ def _ring(outline: list[tuple[float, float]]) -> list[list[float]]:
     if closing != first[0]:  # the outline went once round a pole
         pole = 90.0 if sum(point[1] for point in ring) > 0 else -90.0
         ring += [[closing, first[1]], [closing, pole], [first[0], pole]]
-    ring = [[round(longitude, 5), round(latitude, 5)] for longitude, latitude in ring]
+    ring = [
+        [round(longitude, 5), round(latitude, 5)]
+        for longitude, latitude in ring
+    ]
     doubled_area = sum(
-        x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1])
+        x0 * y1 - x1 * y0
+        for (x0, y0), (x1, y1) in zip(ring, ring[1:] + ring[:1])
     )
     if doubled_area < 0:
         ring.reverse()
@@ -120,10 +129,10 @@ def _ring(outline: list[tuple[float, float]]) -> list[list[float]]:
 def footprints_geojson(images: Iterable[GlobeImage]) -> str:
     """Build a GeoJSON ``FeatureCollection`` of frame footprints.
 
-    Each feature is a ``Polygon`` from :func:`footprint_outline` with the
-    frame ID, principal point, altitude (km), camera and footprint size (km)
-    as properties. Frames whose outline has fewer than three points are
-    skipped.
+    Each feature is a ``Polygon`` from :func:`footprint_outline` with
+    the frame ID, principal point, altitude (km), camera and footprint
+    size (km) as properties. Frames whose outline has fewer than three
+    points are skipped.
 
     Returns
     -------
@@ -140,7 +149,10 @@ def footprints_geojson(images: Iterable[GlobeImage]) -> str:
             {
                 "type": "Feature",
                 "id": image.frame_id,
-                "geometry": {"type": "Polygon", "coordinates": [_ring(outline)]},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [_ring(outline)],
+                },
                 "properties": {
                     "frame_id": image.frame_id,
                     "latitude": image.latitude,

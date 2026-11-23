@@ -1,7 +1,8 @@
-"""Reference tabs: summarised facts about the Moon and the Lunar Orbiter program.
+"""Reference tabs: facts about the Moon and the Lunar Orbiter program.
 
-The text summarises two Wikipedia articles in Spanish and English, so it is
-licensed CC BY-SA 4.0, not MIT; each tab links its source and the licence.
+The text summarises two Wikipedia articles in Spanish and English, so it
+is licensed CC BY-SA 4.0, not MIT; each tab links its source and the
+licence.
 """
 
 from __future__ import annotations
@@ -68,74 +69,104 @@ CONTENT = {
                     ("Magnitud aparente", "−12,6 (Luna llena)"),
                     ("Temperatura", "−233 °C mín. · 123 °C máx."),
                     ("Media día / noche", "107 °C / −153 °C"),
-                    ("Presión en superficie", "3 × 10⁻¹⁰ Pa (casi sin atmósfera)"),
+                    (
+                        "Presión en superficie",
+                        "3 × 10⁻¹⁰ Pa (casi sin atmósfera)",
+                    ),
                     (
                         "Corteza",
-                        "O 43 % · Si 21 % · Al 10 % · Ca 9 % · Fe 9 % · Mg 5 %",
+                        (
+                            "O 43 % · Si 21 % · Al 10 % · Ca 9 % · Fe 9 % · "
+                            "Mg 5 %"
+                        ),
                     ),
                 ],
             ),
         ],
         "moon_summary": [
-            "Único satélite natural de la Tierra y el quinto mayor del sistema "
-            "solar; en proporción a su planeta es el satélite más grande, y el "
-            "segundo más denso tras Ío.",
-            "Gira de forma síncrona con la Tierra, así que siempre muestra la misma "
-            "cara: mares oscuros de origen volcánico entre montañas antiguas y "
-            "cráteres de impacto.",
-            "Su gravedad produce las mareas y alarga poco a poco el día terrestre. "
-            "Desde la Tierra se ve del mismo tamaño que el Sol, lo que permite los "
-            "eclipses solares totales.",
-            "Se formó hace unos 4500 millones de años, probablemente tras un gran "
-            "impacto contra la Tierra primitiva.",
-            "Es el único cuerpo celeste pisado por humanos: el Apolo 8 la orbitó en "
-            "1968 y seis misiones Apolo alunizaron entre 1969 y 1972, trayendo más "
-            "de 380 kg de roca.",
-            "El Lunojod 1 soviético (1970) fue el primer vehículo robótico en su "
-            "superficie. Orbitadores recientes han confirmado hielo de agua en "
-            "cráteres polares en sombra permanente, y el programa Artemis (desde "
-            "2022) prepara la vuelta de astronautas.",
+            "Único satélite natural de la Tierra y el quinto mayor del "
+            "sistema solar; en proporción a su planeta es el satélite más "
+            "grande, y el segundo más denso tras Ío.",
+            "Gira de forma síncrona con la Tierra, así que siempre muestra la "
+            "misma cara: mares oscuros de origen volcánico entre montañas "
+            "antiguas y cráteres de impacto.",
+            "Su gravedad produce las mareas y alarga poco a poco el día "
+            "terrestre. Desde la Tierra se ve del mismo tamaño que el Sol, lo "
+            "que permite los eclipses solares totales.",
+            "Se formó hace unos 4500 millones de años, probablemente tras un "
+            "gran impacto contra la Tierra primitiva.",
+            "Es el único cuerpo celeste pisado por humanos: el Apolo 8 la "
+            "orbitó en 1968 y seis misiones Apolo alunizaron entre 1969 y "
+            "1972, trayendo más de 380 kg de roca.",
+            "El Lunojod 1 soviético (1970) fue el primer vehículo robótico en "
+            "su superficie. Orbitadores recientes han confirmado hielo de "
+            "agua en cráteres polares en sombra permanente, y el programa "
+            "Artemis (desde 2022) prepara la vuelta de astronautas.",
         ],
         "program_facts": [
             (
                 "Misiones",
-                "5 naves no tripuladas de EE. UU. (1966–1967), todas con éxito",
+                (
+                    "5 naves no tripuladas de EE. UU. (1966–1967), todas con "
+                    "éxito"
+                ),
             ),
             ("Lanzador", "Atlas-Agena D"),
             (
                 "Objetivo",
-                "Cartografiar la Luna para elegir los lugares de alunizaje del Apolo",
+                (
+                    "Cartografiar la Luna para elegir los lugares de "
+                    "alunizaje del Apolo"
+                ),
             ),
             (
                 "Cobertura",
-                "99 % de la superficie, con resolución de 60 m o mejor (hasta 1 m)",
+                (
+                    "99 % de la superficie, con resolución de 60 m o mejor "
+                    "(hasta 1 m)"
+                ),
             ),
-            ("Fotogramas", "2180 de alta resolución y 882 de resolución media"),
-            ("Cámara", "Kodak de doble objetivo: 610 mm (alta) y 80 mm (media)"),
+            (
+                "Fotogramas",
+                "2180 de alta resolución y 882 de resolución media",
+            ),
+            (
+                "Cámara",
+                "Kodak de doble objetivo: 610 mm (alta) y 80 mm (media)",
+            ),
             (
                 "Película",
-                "70 mm revelada a bordo, escaneada y enviada como vídeo analógico",
+                (
+                    "70 mm revelada a bordo, escaneada y enviada como vídeo "
+                    "analógico"
+                ),
             ),
-            ("Nave", "Cono truncado de 1,65 m de alto y 1,5 m de base; 375 W solares"),
+            (
+                "Nave",
+                (
+                    "Cono truncado de 1,65 m de alto y 1,5 m de base; 375 W "
+                    "solares"
+                ),
+            ),
             ("Gestión y coste", "NASA Langley · unos 200 millones de dólares"),
         ],
         "program_summary": [
             "Las misiones 1 a 3 volaron en órbitas de baja inclinación para "
             "fotografiar 20 posibles lugares de alunizaje tripulado.",
-            "Las misiones 4 y 5 usaron órbitas polares altas con fines científicos: "
-            "la 4 cubrió toda la cara visible y el 9 % de la oculta, y la 5 completó "
-            "la cara oculta y 36 zonas seleccionadas.",
-            "Tomaron las primeras fotos de la Tierra desde la Luna (Lunar Orbiter 1, "
-            "agosto de 1966) y la primera imagen de la Tierra completa (Lunar "
-            "Orbiter 5, 8 de agosto de 1967).",
-            "El seguimiento Doppler de las naves permitió cartografiar el campo "
-            "gravitatorio lunar y descubrir los mascons, concentraciones de masa "
-            "bajo algunos mares.",
-            "Al terminar, todas las naves se estrellaron a propósito contra la Luna "
-            "para no interferir con las misiones Apolo.",
-            "Desde 2007, el proyecto LOIRP recupera las imágenes desde las cintas "
-            "analógicas originales, con mucha más resolución que las de los años "
-            "sesenta.",
+            "Las misiones 4 y 5 usaron órbitas polares altas con fines "
+            "científicos: la 4 cubrió toda la cara visible y el 9 % de la "
+            "oculta, y la 5 completó la cara oculta y 36 zonas seleccionadas.",
+            "Tomaron las primeras fotos de la Tierra desde la Luna (Lunar "
+            "Orbiter 1, agosto de 1966) y la primera imagen de la Tierra "
+            "completa (Lunar Orbiter 5, 8 de agosto de 1967).",
+            "El seguimiento Doppler de las naves permitió cartografiar el "
+            "campo gravitatorio lunar y descubrir los mascons, "
+            "concentraciones de masa bajo algunos mares.",
+            "Al terminar, todas las naves se estrellaron a propósito contra "
+            "la Luna para no interferir con las misiones Apolo.",
+            "Desde 2007, el proyecto LOIRP recupera las imágenes desde las "
+            "cintas analógicas originales, con mucha más resolución que las "
+            "de los años sesenta.",
         ],
         "missions": [
             (
@@ -183,7 +214,13 @@ CONTENT = {
         "in_numbers": "In numbers",
         "mission_log": "Mission log",
         "source": ("Summary of ", ", licensed under "),
-        "mission_header": ["Mission", "Launch", "Imaging", "Impact", "Purpose"],
+        "mission_header": [
+            "Mission",
+            "Launch",
+            "Imaging",
+            "Impact",
+            "Purpose",
+        ],
         "moon_facts": [
             (
                 "Body",
@@ -217,59 +254,82 @@ CONTENT = {
                     ("Apparent magnitude", "−12.6 (full Moon)"),
                     ("Temperature", "−233 °C min · 123 °C max"),
                     ("Mean day / night", "107 °C / −153 °C"),
-                    ("Surface pressure", "3 × 10⁻¹⁰ Pa (almost no atmosphere)"),
-                    ("Crust", "O 43% · Si 21% · Al 10% · Ca 9% · Fe 9% · Mg 5%"),
+                    (
+                        "Surface pressure",
+                        "3 × 10⁻¹⁰ Pa (almost no atmosphere)",
+                    ),
+                    (
+                        "Crust",
+                        "O 43% · Si 21% · Al 10% · Ca 9% · Fe 9% · Mg 5%",
+                    ),
                 ],
             ),
         ],
         "moon_summary": [
-            "Earth's only natural satellite and the fifth largest in the Solar "
-            "System; relative to its planet it is the largest satellite, and the "
-            "second densest after Io.",
-            "It rotates synchronously with Earth, so it always shows the same face: "
-            "dark volcanic maria between ancient highlands and impact craters.",
-            "Its gravity raises the tides and slowly lengthens Earth's day. Seen "
-            "from Earth it is the same size as the Sun, which makes total solar "
-            "eclipses possible.",
-            "It formed about 4.5 billion years ago, probably after a giant impact "
-            "with the early Earth.",
-            "It is the only celestial body humans have walked on: Apollo 8 orbited "
-            "it in 1968 and six Apollo missions landed between 1969 and 1972, "
-            "bringing back more than 380 kg of rock.",
+            "Earth's only natural satellite and the fifth largest in the "
+            "Solar System; relative to its planet it is the largest "
+            "satellite, and the second densest after Io.",
+            "It rotates synchronously with Earth, so it always shows the same "
+            "face: dark volcanic maria between ancient highlands and impact "
+            "craters.",
+            "Its gravity raises the tides and slowly lengthens Earth's day. "
+            "Seen from Earth it is the same size as the Sun, which makes "
+            "total solar eclipses possible.",
+            "It formed about 4.5 billion years ago, probably after a giant "
+            "impact with the early Earth.",
+            "It is the only celestial body humans have walked on: Apollo 8 "
+            "orbited it in 1968 and six Apollo missions landed between 1969 "
+            "and 1972, bringing back more than 380 kg of rock.",
             "The Soviet Lunokhod 1 (1970) was the first robotic rover on its "
             "surface. Recent orbiters have confirmed water ice in permanently "
             "shadowed polar craters, and the Artemis program (since 2022) is "
             "preparing the return of astronauts.",
         ],
         "program_facts": [
-            ("Missions", "5 uncrewed US spacecraft (1966–1967), all successful"),
+            (
+                "Missions",
+                "5 uncrewed US spacecraft (1966–1967), all successful",
+            ),
             ("Launch vehicle", "Atlas-Agena D"),
             ("Goal", "Map the Moon to select Apollo landing sites"),
             (
                 "Coverage",
-                "99% of the surface at 60 m resolution or better (down to 1 m)",
+                (
+                    "99% of the surface at 60 m resolution or better (down to "
+                    "1 m)"
+                ),
             ),
             ("Frames", "2,180 high-resolution and 882 medium-resolution"),
             ("Camera", "Kodak dual-lens: 610 mm (high) and 80 mm (medium)"),
-            ("Film", "70 mm, developed on board, scanned and sent as analog video"),
-            ("Spacecraft", "Truncated cone 1.65 m tall, 1.5 m base; 375 W solar power"),
+            (
+                "Film",
+                "70 mm, developed on board, scanned and sent as analog video",
+            ),
+            (
+                "Spacecraft",
+                "Truncated cone 1.65 m tall, 1.5 m base; 375 W solar power",
+            ),
             ("Management and cost", "NASA Langley · about US$200 million"),
         ],
         "program_summary": [
-            "Missions 1 to 3 flew low-inclination orbits to image 20 potential "
-            "crewed landing sites.",
-            "Missions 4 and 5 used high polar orbits for broader science: Lunar "
-            "Orbiter 4 covered the entire near side and 9% of the far side, and "
-            "Lunar Orbiter 5 completed the far side and 36 preselected areas.",
-            "They took the first pictures of Earth from the Moon (Lunar Orbiter 1, "
-            "August 1966) and the first image of the whole Earth (Lunar Orbiter 5, "
-            "8 August 1967).",
-            "Doppler tracking of the spacecraft mapped the Moon's gravity field and "
-            "revealed mascons, mass concentrations beneath some maria.",
-            "When their work was done, every spacecraft was deliberately crashed "
-            "into the Moon so it would not interfere with Apollo flights.",
-            "Since 2007 the LOIRP project has recovered the images from the original "
-            "analog tapes, at far higher resolution than the 1960s releases.",
+            "Missions 1 to 3 flew low-inclination orbits to image 20 "
+            "potential crewed landing sites.",
+            "Missions 4 and 5 used high polar orbits for broader science: "
+            "Lunar Orbiter 4 covered the entire near side and 9% of the far "
+            "side, and Lunar Orbiter 5 completed the far side and 36 "
+            "preselected areas.",
+            "They took the first pictures of Earth from the Moon (Lunar "
+            "Orbiter 1, August 1966) and the first image of the whole Earth "
+            "(Lunar Orbiter 5, 8 August 1967).",
+            "Doppler tracking of the spacecraft mapped the Moon's gravity "
+            "field and revealed mascons, mass concentrations beneath some "
+            "maria.",
+            "When their work was done, every spacecraft was deliberately "
+            "crashed into the Moon so it would not interfere with Apollo "
+            "flights.",
+            "Since 2007 the LOIRP project has recovered the images from the "
+            "original analog tapes, at far higher resolution than the 1960s "
+            "releases.",
         ],
         "missions": [
             (
@@ -331,11 +391,16 @@ def _fact_rows(facts: list[tuple[str, str]]) -> html.Div:
 
 def _summary(paragraphs: list[str]) -> html.Ul:
     """Build a bulleted list of summary paragraphs."""
-    return html.Ul([html.Li(text) for text in paragraphs], className="summary-list")
+    return html.Ul(
+        [html.Li(text) for text in paragraphs], className="summary-list"
+    )
 
 
 def _source(source: tuple[str, str], lang: str) -> html.P:
-    """Build the attribution paragraph (source title and link, licence) for a tab."""
+    """Build the attribution paragraph of a tab.
+
+    The source title and link, and the licence.
+    """
     title, url = source
     before, between = CONTENT[lang]["source"]
     return html.P(
@@ -356,7 +421,10 @@ def _source(source: tuple[str, str], lang: str) -> html.P:
 
 
 def moon_tab(lang: str) -> html.Div:
-    """Build the «Moon» tab: summary, source and fact cards in ``lang``."""
+    """Build the «Moon» tab.
+
+    Summary, source and fact cards in ``lang``.
+    """
     text = CONTENT[lang]
     return html.Div(
         [
@@ -388,13 +456,21 @@ def moon_tab(lang: str) -> html.Div:
 
 
 def program_tab(lang: str) -> html.Div:
-    """Build the «Lunar Orbiter program» tab: summary, facts and mission log."""
+    """Build the «Lunar Orbiter program» tab.
+
+    Summary, facts and mission log.
+    """
     text = CONTENT[lang]
     table = html.Table(
         [
-            html.Thead(html.Tr([html.Th(cell) for cell in text["mission_header"]])),
+            html.Thead(
+                html.Tr([html.Th(cell) for cell in text["mission_header"]])
+            ),
             html.Tbody(
-                [html.Tr([html.Td(cell) for cell in row]) for row in text["missions"]]
+                [
+                    html.Tr([html.Td(cell) for cell in row])
+                    for row in text["missions"]
+                ]
             ),
         ],
         className="mission-table",
@@ -403,7 +479,9 @@ def program_tab(lang: str) -> html.Div:
         [
             html.Section(
                 [
-                    html.Div(text["program_kicker"], className="section-kicker"),
+                    html.Div(
+                        text["program_kicker"], className="section-kicker"
+                    ),
                     html.H2(text["program_title"], className="side-heading"),
                     _summary(text["program_summary"]),
                     _source(PROGRAM_SOURCE, lang),
@@ -414,14 +492,20 @@ def program_tab(lang: str) -> html.Div:
                 [
                     html.Section(
                         [
-                            html.H3(text["in_numbers"], className="reference-heading"),
+                            html.H3(
+                                text["in_numbers"],
+                                className="reference-heading",
+                            ),
                             _fact_rows(text["program_facts"]),
                         ],
                         className="reference-card",
                     ),
                     html.Section(
                         [
-                            html.H3(text["mission_log"], className="reference-heading"),
+                            html.H3(
+                                text["mission_log"],
+                                className="reference-heading",
+                            ),
                             html.Div(table, className="table-scroll"),
                         ],
                         className="reference-card",

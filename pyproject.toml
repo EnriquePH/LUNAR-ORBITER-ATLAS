@@ -45,15 +45,21 @@ testpaths = ["tests"]
 
 [tool.ruff]
 target-version = "py310"
-line-length = 88
+line-length = 79
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "FURB", "C4", "D"]
 # Constructor arguments are documented in the class docstring.
 ignore = ["D107"]
 
+# PEP 8 widths: code 79, comments and docstrings 72 (W505)
+[tool.ruff.lint.pycodestyle]
+max-doc-length = 72
+
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D103"]
+# a page of the LPI archive copied as it is, inside a test string
+"tests/test_lpi.py" = ["D103", "E501"]

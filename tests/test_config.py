@@ -8,7 +8,10 @@ from orbiter.config import AppConfig, load_config
 
 
 def _write(tmp_path, data):
-    """Write ``data`` as JSON to ``config.json`` in ``tmp_path``; return the path."""
+    """Write ``data`` as JSON to ``config.json`` in ``tmp_path``.
+
+    Return the path.
+    """
     path = tmp_path / "config.json"
     path.write_text(json.dumps(data))
     return path
@@ -24,7 +27,11 @@ def test_missing_file_uses_defaults(tmp_path):
 def test_reads_host_port_and_language(tmp_path):
     config = load_config(_write(tmp_path, {"port": 8051, "language": "en"}))
 
-    assert (config.host, config.port, config.language) == ("127.0.0.1", 8051, "en")
+    assert (config.host, config.port, config.language) == (
+        "127.0.0.1",
+        8051,
+        "en",
+    )
 
 
 @pytest.mark.parametrize(

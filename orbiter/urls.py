@@ -1,7 +1,7 @@
 """URLs of the LPI Lunar Orbiter Photo Gallery.
 
-These helpers only build URLs; they do not validate identifiers or check that
-the page exists. Validation happens in :mod:`orbiter.lpi`.
+These helpers only build URLs; they do not validate identifiers or check
+that the page exists. Validation happens in :mod:`orbiter.lpi`.
 """
 
 MISSIONS_NUM = 5

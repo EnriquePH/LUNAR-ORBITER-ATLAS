@@ -1,12 +1,13 @@
 """Client and parser for the LPI Lunar Orbiter Photo Gallery.
 
-Units used throughout: latitudes, longitudes and angles in degrees (east and
-north positive), altitudes in kilometres.
+Units used throughout: latitudes, longitudes and angles in degrees (east
+and north positive), altitudes in kilometres.
 
 Network calls use ``requests`` with timeouts and keep results in small
 in-memory LRU caches; :func:`clear_cache` empties them. Functions raise
-:class:`LpiError` for invalid input or pages without the expected data, and let
-``requests.RequestException`` propagate for HTTP and connection failures.
+:class:`LpiError` for invalid input or pages without the expected data,
+and let ``requests.RequestException`` propagate for HTTP and connection
+failures.
 """
 
 from __future__ import annotations
@@ -22,14 +23,17 @@ from bs4 import BeautifulSoup
 
 from orbiter.urls import MISSIONS_NUM, frame_url, mission_url
 
-USER_AGENT = "LunarOrbiterLocalViewer/1.0 (educational; +https://www.energycode.org/)"
+USER_AGENT = (
+    "LunarOrbiterLocalViewer/1.0 (educational; +https://www.energycode.org/)"
+)
 
 
 class LpiError(ValueError):
     """A problem with LPI data, identified by a translatable ``key``.
 
-    The app turns ``key`` and ``params`` into text with ``orbiter.i18n``; the
-    plain message is English for logs and non-UI callers.
+    The app turns ``key`` and ``params`` into text with
+    ``orbiter.i18n``; the plain message is English for logs and non-UI
+    callers.
 
     Parameters
     ----------
@@ -57,9 +61,10 @@ class LpiError(ValueError):
 class FrameMetadata(TypedDict):
     """Fields parsed from a frame page.
 
-    ``mission``, ``latitude``, ``longitude`` and ``image_url`` are always set.
-    The spacecraft and illumination fields are ``None`` when the page does not
-    list them. Degrees for positions and angles, kilometres for altitude.
+    ``mission``, ``latitude``, ``longitude`` and ``image_url`` are
+    always set. The spacecraft and illumination fields are ``None`` when
+    the page does not list them. Degrees for positions and angles,
+    kilometres for altitude.
     """
 
     mission: str
@@ -99,8 +104,8 @@ class OrbiterFrame:
 
 
 _NUMBER = r"(-?\d+(?:\.\d+)?)"
-# Optional fields: (key, section label, value label). Each value is the first
-# number after its label inside its section of the page text.
+# Optional fields: (key, section label, value label). Each value is the
+# first number after its label inside its section of the page text.
 _OPTIONAL_FIELDS = (
     ("spacecraft_altitude_km", "Spacecraft Position", "Altitude"),
     ("spacecraft_latitude", "Spacecraft Position", "Latitude"),
@@ -119,27 +124,44 @@ _SECTION_LABELS = (
 
 
 def _section(text: str, label: str) -> str:
-    """Return the page text between ``label:`` and the next known section."""
+    """Return the page text that follows ``label:``.
+
+    It ends at the next known section.
+    """
     start = re.search(rf"{label}:", text, re.IGNORECASE)
     if start is None:
         return ""
-    others = "|".join(re.escape(other) for other in _SECTION_LABELS if other != label)
+    others = "|".join(
+        re.escape(other) for other in _SECTION_LABELS if other != label
+    )
     end = re.search(rf"(?:{others})", text[start.end() :], re.IGNORECASE)
-    return text[start.end() : start.end() + end.start()] if end else text[start.end() :]
+    return (
+        text[start.end() : start.end() + end.start()]
+        if end
+        else text[start.end() :]
+    )
 
 
 def _optional_number(section: str, label: str) -> float | None:
-    """Return the first number after ``label:`` in ``section``, if any."""
-    match = re.search(rf"{re.escape(label)}:\s*{_NUMBER}", section, re.IGNORECASE)
+    """Return the first number after ``label:`` in ``section``.
+
+    If any.
+    """
+    match = re.search(
+        rf"{re.escape(label)}:\s*{_NUMBER}", section, re.IGNORECASE
+    )
     return float(match.group(1)) if match else None
 
 
 def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
-    """Extract mission, coordinates, illumination and preview URL from a page.
+    """Extract mission, coordinates.
 
-    The preview prefers the medium-resolution JPEG (``_med``), then the middle
-    high-resolution sub-frame (``_h2``), then any other plate; its URL is made
-    absolute. That order matches the image the gallery thumbnail shows.
+    Illumination and preview URL from a page.
+
+    The preview prefers the medium-resolution JPEG (``_med``), then the
+    middle high-resolution sub-frame (``_h2``), then any other plate;
+    its URL is made absolute. That order matches the image the gallery
+    thumbnail shows.
 
     Parameters
     ----------
@@ -151,18 +173,21 @@ def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
     Returns
     -------
     FrameMetadata
-        The parsed fields; see :class:`FrameMetadata` for keys and units.
+        The parsed fields; see :class:`FrameMetadata` for keys and
+        units.
 
     Raises
     ------
     LpiError
-        ``no_coordinates`` if the principal point is missing, or ``no_preview``
-        if no preview link for ``frame_id`` is found.
+        ``no_coordinates`` if the principal point is missing, or
+        ``no_preview`` if no preview link for ``frame_id`` is found.
     """
     soup = BeautifulSoup(page_html, "html.parser")
     text = " ".join(soup.stripped_strings)
 
-    mission_match = re.search(r"Mission:\s*(Lunar Orbiter\s+\d+)", text, re.IGNORECASE)
+    mission_match = re.search(
+        r"Mission:\s*(Lunar Orbiter\s+\d+)", text, re.IGNORECASE
+    )
     point_match = re.search(
         r"Principal Point:\s*Latitude:\s*(-?\d+(?:\.\d+)?)°?\s*"
         r"Longitude:\s*(-?\d+(?:\.\d+)?)°?",
@@ -182,8 +207,9 @@ def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
     if not image_urls:
         raise LpiError("no_preview", frame_id=frame_id)
 
-    # Prefer the image the LPI thumbnail shows: the medium-resolution frame, or
-    # else the middle high-resolution sub-frame (h2), centred like the frame.
+    # Prefer the image the LPI thumbnail shows: the medium-resolution
+    # frame, or else the middle high-resolution sub-frame (h2), centred
+    # like the frame.
     image_url = next(
         (
             url
@@ -209,7 +235,10 @@ def parse_frame_page(frame_id: str, page_html: str) -> FrameMetadata:
 
 
 def parse_mission_page(page_html: str) -> list[str]:
-    """Return the frame IDs linked from a mission gallery, in page order."""
+    """Return the frame IDs linked from a mission gallery.
+
+    In page order.
+    """
     soup = BeautifulSoup(page_html, "html.parser")
     frame_ids = []
     for link in soup.find_all("a", href=re.compile(r"frame/\?\d+$")):
@@ -222,8 +251,9 @@ def parse_mission_page(page_html: str) -> list[str]:
 def fetch_frame(frame_id: str) -> OrbiterFrame:
     """Download a frame's page and preview image (two HTTP requests).
 
-    The last 16 frames are kept in memory, so repeated calls are free until
-    :func:`clear_cache` is called. Surrounding whitespace in the ID is ignored.
+    The last 16 frames are kept in memory, so repeated calls are free
+    until :func:`clear_cache` is called. Surrounding whitespace in the
+    ID is ignored.
 
     Parameters
     ----------
@@ -238,8 +268,8 @@ def fetch_frame(frame_id: str) -> OrbiterFrame:
     Raises
     ------
     LpiError
-        ``invalid_frame_id`` for non-numeric IDs (checked before any request),
-        or a parsing error from :func:`parse_frame_page`.
+        ``invalid_frame_id`` for non-numeric IDs (checked before any
+        request), or a parsing error from :func:`parse_frame_page`.
     requests.RequestException
         On HTTP errors, timeouts or no connection.
     """
@@ -252,7 +282,10 @@ def fetch_frame(frame_id: str) -> OrbiterFrame:
 
 @lru_cache(maxsize=16)
 def _fetch_frame_cached(frame_id: str) -> OrbiterFrame:
-    """Download and parse one frame's page and preview; cached in memory by ID."""
+    """Download and parse one frame's page and preview.
+
+    Cached in memory by ID.
+    """
     headers = {"User-Agent": USER_AGENT}
     response = requests.get(frame_url(frame_id), headers=headers, timeout=20)
     response.raise_for_status()
@@ -304,7 +337,10 @@ def fetch_mission_frames(mission: int) -> list[str]:
 
 @lru_cache(maxsize=MISSIONS_NUM)
 def _fetch_mission_frames_cached(mission: int) -> tuple[str, ...]:
-    """Download a mission's gallery page and return its frame IDs; cached in memory."""
+    """Download a mission's gallery page and return its frame IDs.
+
+    Cached in memory.
+    """
     response = requests.get(
         mission_url(mission), headers={"User-Agent": USER_AGENT}, timeout=20
     )

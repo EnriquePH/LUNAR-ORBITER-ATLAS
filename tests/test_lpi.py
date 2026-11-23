@@ -1,4 +1,7 @@
-"""Tests for the LPI client and parser, with HTTP calls replaced by fakes."""
+"""Tests for the LPI client and parser.
+
+With HTTP calls replaced by fakes.
+"""
 
 from types import SimpleNamespace
 
@@ -21,7 +24,8 @@ FRAME_PAGE = """
 <a href="../images/preview/1041_med.jpg">medium</a>
 """
 
-# Mirrors the layout of the live LPI frame table, including the &nbsp; spacing.
+# Mirrors the layout of the live LPI frame table, including the &nbsp;
+# spacing.
 FULL_FRAME_PAGE = """
 <table><tr><td>
 Mission: Lunar Orbiter 1<br>
@@ -53,7 +57,9 @@ def test_parse_frame_page_resolves_relative_preview_url():
         "mission": "Lunar Orbiter 1",
         "latitude": 3.3,
         "longitude": 39.15,
-        "image_url": "https://www.lpi.usra.edu/resources/lunarorbiter/images/preview/1041_med.jpg",
+        "image_url": (
+            "https://www.lpi.usra.edu/resources/lunarorbiter/images/preview/1041_med.jpg"
+        ),
         "spacecraft_altitude_km": None,
         "spacecraft_latitude": None,
         "spacecraft_longitude": None,
@@ -103,18 +109,24 @@ def test_fetch_mission_frames_downloads_once(monkeypatch):
     def fake_get(url, **kwargs):
         """Record the requested URL and return a canned response."""
         calls.append(url)
-        return SimpleNamespace(text=MISSION_PAGE, raise_for_status=lambda: None)
+        return SimpleNamespace(
+            text=MISSION_PAGE, raise_for_status=lambda: None
+        )
 
     monkeypatch.setattr("orbiter.lpi.requests.get", fake_get)
 
     assert fetch_mission_frames(1) == ["1005", "1006"]
     assert fetch_mission_frames(1) == ["1005", "1006"]
-    assert calls == ["https://www.lpi.usra.edu/resources/lunarorbiter/mission/?1"]
+    assert calls == [
+        "https://www.lpi.usra.edu/resources/lunarorbiter/mission/?1"
+    ]
 
 
 def test_parse_frame_page_requires_principal_point():
     with pytest.raises(LpiError, match="No coordinates") as raised:
-        parse_frame_page("1041", '<a href="/images/preview/1041_med.jpg">image</a>')
+        parse_frame_page(
+            "1041", '<a href="/images/preview/1041_med.jpg">image</a>'
+        )
     assert raised.value.key == "no_coordinates"
 
 
@@ -134,13 +146,18 @@ def test_fetch_frame_downloads_page_and_preview(monkeypatch):
     responses = iter(
         [
             SimpleNamespace(text=FRAME_PAGE, raise_for_status=lambda: None),
-            SimpleNamespace(content=b"jpeg-data", raise_for_status=lambda: None),
+            SimpleNamespace(
+                content=b"jpeg-data", raise_for_status=lambda: None
+            ),
         ]
     )
     calls = []
 
     def fake_get(url, **kwargs):
-        """Record the URL and options, then return a canned page or preview."""
+        """Record the URL and options.
+
+        Then return a canned page or preview.
+        """
         calls.append((url, kwargs))
         return next(responses)
 
@@ -161,7 +178,9 @@ def test_fetch_frame_reuses_cached_result(monkeypatch):
     responses = iter(
         [
             SimpleNamespace(text=frame_page, raise_for_status=lambda: None),
-            SimpleNamespace(content=b"cached-jpeg", raise_for_status=lambda: None),
+            SimpleNamespace(
+                content=b"cached-jpeg", raise_for_status=lambda: None
+            ),
         ]
     )
     calls = []
@@ -181,8 +200,10 @@ def test_fetch_frame_reuses_cached_result(monkeypatch):
 
 def test_parse_frame_page_prefers_the_middle_high_resolution_plate():
     page = FULL_FRAME_PAGE.replace(
-        '&nbsp; 1041_med <a href="../images/preview/1041_med.jpg">Preview JPG</a>',
-        '&nbsp; 1041_h2 <a href="../images/preview/1041_h2.jpg">Preview JPG</a>',
+        '&nbsp; 1041_med <a href="../images/preview/1041_med.jpg">'
+        "Preview JPG</a>",
+        '&nbsp; 1041_h2 <a href="../images/preview/1041_h2.jpg">'
+        "Preview JPG</a>",
     )
 
     assert parse_frame_page("1041", page)["image_url"].endswith("/1041_h2.jpg")

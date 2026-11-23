@@ -122,9 +122,11 @@ make format    # ruff --fix + ruff format (obligatorio antes de commit)
   El User-Agent lleva la web de ENERGYCODE, no emails.
 - No subir descargas: `/data/`, `/outputs/` y `/draft/` están en `.gitignore`.
   MIT cubre solo el código; imágenes del LPI y texto de Wikipedia tienen su licencia.
-- Ruff: `line-length = 88` con `E501` y `ruff format`.
+- Ruff: `line-length = 79` (PEP 8) con `E501` y `ruff format`; comentarios y
+  docstrings a 72 (`max-doc-length`, `W505`). JS, CSS y HTML con Prettier a 79
+  (`.prettierrc.yaml`).
 - Docstrings estilo **NumPy** en todo módulo, clase y función, también los privados
-  (norma `01-PYTHON`, 2026-11-15; Ruff `D` con `convention = "numpy"`; `D107`
+  (2026-11-15; Ruff `D` con `convention = "numpy"`; `D107`
   desactivado: los argumentos del constructor van en el docstring de la clase; en
   `tests/`, las funciones `test_*` no lo necesitan, el módulo sí).
   Indica unidades (grados, km), campos opcionales, caché y excepciones.

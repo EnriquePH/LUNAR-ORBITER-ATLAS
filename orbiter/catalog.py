@@ -1,18 +1,22 @@
-"""Background loading of every frame in a mission, with an on-disk cache.
+"""Background loading of every frame in a mission.
 
-Each frame needs its LPI page (for coordinates) and its small thumbnail. Both
-are cached under ``data/lpi`` (or ``$ORBITER_CACHE_DIR``)::
+With an on-disk cache.
 
-    data/lpi/frames/<frame_id>.json   parsed page (orbiter.lpi.FrameMetadata)
-    data/lpi/thumbs/<frame_id>.jpg    LPI thumbnail, as downloaded
+Each frame needs its LPI page (for coordinates) and its small thumbnail.
+Both are cached under ``data/lpi`` (or ``$ORBITER_CACHE_DIR``)::
 
-Files are written atomically, so an interrupted run never leaves a partial one.
-The cache never expires: the archive is historical and does not change. To
-force a fresh download, delete ``data/lpi`` or the files of one frame. Frames
-that failed are not cached and are retried the next time the app starts.
+    data/lpi/frames/<frame_id>.json   parsed page
+    (orbiter.lpi.FrameMetadata) data/lpi/thumbs/<frame_id>.jpg    LPI
+    thumbnail, as downloaded
 
-``DOWNLOAD_WORKERS`` threads share one rate limit, so request starts are always
-at least ``REQUEST_DELAY_SECONDS`` apart.
+Files are written atomically, so an interrupted run never leaves a
+partial one. The cache never expires: the archive is historical and does
+not change. To force a fresh download, delete ``data/lpi`` or the files
+of one frame. Frames that failed are not cached and are retried the next
+time the app starts.
+
+``DOWNLOAD_WORKERS`` threads share one rate limit, so request starts are
+always at least ``REQUEST_DELAY_SECONDS`` apart.
 """
 
 from __future__ import annotations
@@ -48,17 +52,28 @@ TILE_SIZE = (MAX_TILE_PIXELS, MAX_TILE_PIXELS)
 
 
 def default_cache_dir() -> Path:
-    """Return ``$ORBITER_CACHE_DIR`` if set, else ``data/lpi`` in the cwd."""
-    return Path(os.environ.get("ORBITER_CACHE_DIR", Path.cwd() / "data" / "lpi"))
+    """Return ``$ORBITER_CACHE_DIR`` if set.
+
+    Else ``data/lpi`` in the cwd.
+    """
+    return Path(
+        os.environ.get("ORBITER_CACHE_DIR", Path.cwd() / "data" / "lpi")
+    )
 
 
 def thumbnail_url(frame_id: str) -> str:
-    """Return the URL of a frame's small LPI thumbnail (about 120 x 140 px)."""
+    """Return the URL of a frame's small LPI thumbnail.
+
+    About 120 x 140 px.
+    """
     return f"{ORBITER_URL}/images/thumb/{frame_id}.jpg"
 
 
 def _texture(image_bytes: bytes) -> np.ndarray:
-    """Decode image bytes into a grayscale uint8 array shrunk to fit ``TILE_SIZE``."""
+    """Decode image bytes into a grayscale uint8 array.
+
+    Shrunk to fit ``TILE_SIZE``.
+    """
     image = Image.open(BytesIO(image_bytes)).convert("L")
     image.thumbnail(TILE_SIZE, Image.Resampling.LANCZOS)
     return np.asarray(image, dtype=np.uint8)
@@ -72,7 +87,10 @@ def _new_session() -> requests.Session:
 
 
 def _write_atomic(path: Path, data: bytes) -> None:
-    """Write via a temporary file so an interrupted run never leaves a partial one."""
+    """Write through a temporary file.
+
+    An interrupted run never leaves a partial file.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
     temporary.write_bytes(data)
@@ -82,8 +100,8 @@ def _write_atomic(path: Path, data: bytes) -> None:
 class TileStore:
     """Read frame tiles from disk, downloading the missing ones.
 
-    Safe to call from several threads: each thread gets its own HTTP session,
-    and all threads share the rate limit.
+    Safe to call from several threads: each thread gets its own HTTP
+    session, and all threads share the rate limit.
 
     Parameters
     ----------
@@ -92,7 +110,8 @@ class TileStore:
     delay : float, default REQUEST_DELAY_SECONDS
         Minimum seconds between the starts of two requests.
     session_factory : callable, default _new_session
-        Creates the HTTP session for each thread; tests replace it with a fake.
+        Creates the HTTP session for each thread; tests replace it with
+        a fake.
     """
 
     def __init__(
@@ -109,7 +128,9 @@ class TileStore:
         self._next_request = 0.0
 
     def _get(self, url: str) -> requests.Response:
-        """GET a URL with this thread's session, after the shared rate-limit wait.
+        """GET a URL with this thread's session.
+
+        After the shared rate-limit wait.
 
         Raises ``requests.HTTPError`` for error status codes.
         """
@@ -125,7 +146,7 @@ class TileStore:
         return response
 
     def metadata(self, frame_id: str) -> FrameMetadata | None:
-        """Return a frame's cached page metadata without downloading anything.
+        """Return a frame's cached page metadata, downloading nothing.
 
         Returns
         -------
@@ -143,10 +164,12 @@ class TileStore:
         return json.loads(path.read_text()) if path.exists() else None
 
     def load(self, frame_id: str) -> GlobeImage:
-        """Return a frame's tile, downloading and caching what is missing.
+        """Return a frame's tile.
 
-        Makes up to two requests (page and thumbnail); none when both files
-        are cached.
+        Downloading and caching what is missing.
+
+        Makes up to two requests (page and thumbnail); none when both
+        files are cached.
 
         Parameters
         ----------
@@ -165,8 +188,8 @@ class TileStore:
         orbiter.lpi.LpiError
             If the page lacks coordinates or a preview.
         OSError
-            If the cache cannot be read or written, or the image cannot be
-            decoded.
+            If the cache cannot be read or written, or the image cannot
+            be decoded.
         ValueError
             If a cached JSON file is corrupt (delete it to retry).
         """
@@ -208,13 +231,13 @@ class MissionProgress:
     total : int
         Frames listed for the mission; 0 until the list has arrived.
     failed : int
-        Frames that could not be loaded; the rest of the mission still loads.
-        They are retried when the app restarts.
+        Frames that could not be loaded; the rest of the mission still
+        loads. They are retried when the app restarts.
     finished : bool
         True once every frame has been tried, or the listing failed.
     error : Exception or None
-        Why the mission list could not be fetched; frames are not attempted
-        then. ``None`` otherwise.
+        Why the mission list could not be fetched; frames are not
+        attempted then. ``None`` otherwise.
     tiles : dict of str to GlobeImage
         Loaded tiles by frame ID.
     """
@@ -227,7 +250,9 @@ class MissionProgress:
 
 
 class MissionLoader:
-    """Load whole missions in background threads; safe to poll from callbacks.
+    """Load whole missions in background threads.
+
+    Safe to poll from callbacks.
 
     Parameters
     ----------
@@ -241,25 +266,29 @@ class MissionLoader:
         self._missions: dict[int, MissionProgress] = {}
 
     def start(self, mission: int) -> None:
-        """Begin loading a mission in the background and return immediately.
+        """Start loading a mission in the background and return at once.
 
-        Does nothing if the mission is loading or loaded; a mission whose
-        listing failed is started again.
+        Does nothing if the mission is loading or loaded; a mission
+        whose listing failed is started again.
         """
         with self._lock:
             current = self._missions.get(mission)
-            # A failed mission listing may be retried; anything else runs once.
+            # A failed mission listing may be retried; anything else
+            # runs once.
             if current is not None and current.error is None:
                 return
             self._missions[mission] = MissionProgress()
-        threading.Thread(target=self._run, args=(mission,), daemon=True).start()
+        threading.Thread(
+            target=self._run, args=(mission,), daemon=True
+        ).start()
 
     def progress(self, mission: int) -> MissionProgress:
         """Return a snapshot of a mission's progress.
 
-        The snapshot has its own ``tiles`` dict, so later loads do not change
-        it; the tiles themselves are shared and must not be modified. Unknown
-        missions give an empty, unfinished :class:`MissionProgress`.
+        The snapshot has its own ``tiles`` dict, so later loads do not
+        change it; the tiles themselves are shared and must not be
+        modified. Unknown missions give an empty, unfinished
+        :class:`MissionProgress`.
         """
         with self._lock:
             current = self._missions.get(mission, MissionProgress())
@@ -272,9 +301,12 @@ class MissionLoader:
             )
 
     def _run(self, mission: int) -> None:
-        """Fetch the mission's frame list, then load every frame into its progress.
+        """Fetch the mission's frame list.
 
-        Runs in a background thread; a listing error is stored in the progress.
+        Then load every frame into its progress.
+
+        Runs in a background thread; a listing error is stored in the
+        progress.
         """
         progress = self._missions[mission]
         try:
@@ -289,7 +321,10 @@ class MissionLoader:
             progress.total = len(frame_ids)
 
         def load(frame_id: str) -> None:
-            """Load one frame into the progress, counting it as failed on error."""
+            """Load one frame into the progress.
+
+            Counting it as failed on error.
+            """
             try:
                 tile = self.store.load(frame_id)
             except (requests.RequestException, ValueError, OSError):
@@ -308,13 +343,15 @@ class MissionLoader:
 def download(missions: list[int], poll_seconds: float = 2.0) -> int:
     """Fill the disk cache for ``missions`` and print progress.
 
-    Already cached frames are read from disk, so running it again is cheap.
-    Live progress is only shown on a terminal; logs get one line per mission.
+    Already cached frames are read from disk, so running it again is
+    cheap. Live progress is only shown on a terminal; logs get one line
+    per mission.
 
     Returns
     -------
     int
-        The number of frames that could not be loaded (0 when all succeed).
+        The number of frames that could not be loaded (0 when all
+        succeed).
     """
     loader = MissionLoader(TileStore(default_cache_dir()))
     live = sys.stdout.isatty()
@@ -324,11 +361,17 @@ def download(missions: list[int], poll_seconds: float = 2.0) -> int:
         while not (progress := loader.progress(mission)).finished:
             if live:
                 loaded, total = len(progress.tiles), progress.total or "…"
-                print(f"\rMission {mission}: {loaded}/{total}", end="", flush=True)
+                print(
+                    f"\rMission {mission}: {loaded}/{total}",
+                    end="",
+                    flush=True,
+                )
             time.sleep(poll_seconds)
         prefix = "\r" if live else ""
         if progress.error is not None:
-            print(f"{prefix}Mission {mission}: listing failed: {progress.error}")
+            print(
+                f"{prefix}Mission {mission}: listing failed: {progress.error}"
+            )
             failed += 1
             continue
         extra = f", {progress.failed} failed" if progress.failed else ""
@@ -339,7 +382,10 @@ def download(missions: list[int], poll_seconds: float = 2.0) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Command line: ``python -m orbiter.catalog [MISSION ...]`` (default: all)."""
+    """Run the command line ``python -m orbiter.catalog [MISSION ...]``.
+
+    Without missions, all of them.
+    """
     arguments = sys.argv[1:] if argv is None else argv
     missions = [int(argument) for argument in arguments] or list(
         range(1, MISSIONS_NUM + 1)

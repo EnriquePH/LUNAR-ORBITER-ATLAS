@@ -1,7 +1,8 @@
 """Interface text in Spanish and English.
 
-``t(lang, key, **params)`` returns the string for ``lang``, formatted with
-``params``. Both languages must define the same keys (checked by the tests).
+``t(lang, key, **params)`` returns the string for ``lang``, formatted
+with ``params``. Both languages must define the same keys (checked by
+the tests).
 """
 
 from __future__ import annotations
@@ -19,21 +20,21 @@ TEXTS: dict[str, dict[str, str]] = {
         "eyebrow": "EXPLORACIÓN FOTOGRÁFICA · 1966—1967",
         "title": "Atlas orbital lunar",
         "title_note": (
-            "Fotogramas históricos del archivo LPI proyectados sobre una esfera "
-            "interactiva."
+            "Fotogramas históricos del archivo LPI proyectados sobre una "
+            "esfera interactiva."
         ),
         "tab_atlas": "Atlas",
         "tab_moon": "La Luna",
         "tab_program": "Programa Lunar Orbiter",
-        "globe_label": "VISTA 3D  /  ARRASTRA PARA ROTAR · CLICK EN UNA FOTO PARA "
-        "VER SUS DATOS",
+        "globe_label": "VISTA 3D  /  ARRASTRA PARA ROTAR · CLICK EN UNA FOTO "
+        "PARA VER SUS DATOS",
         "globe_note": "PROYECTADAS DESDE LA NAVE · ORIENTACIÓN ESTIMADA",
         "labels_toggle": "ETIQUETAS",
         "legend_high_altitude": "TOMA DE GRAN ALTITUD (> {km} KM)",
         "note_high_altitude": (
-            "Toma de gran altitud: cubre una zona amplia y se proyecta sobre la "
-            "parte de la Luna que fotografió. Su orientación se estima a partir "
-            "del borde de la Luna visible en la imagen."
+            "Toma de gran altitud: cubre una zona amplia y se proyecta sobre "
+            "la parte de la Luna que fotografió. Su orientación se estima a "
+            "partir del borde de la Luna visible en la imagen."
         ),
         "archive_kicker": "ARCHIVO DE IMÁGENES",
         "frame_heading": "Fotograma",
@@ -45,13 +46,17 @@ TEXTS: dict[str, dict[str, str]] = {
         "random_title": "Cargar un fotograma al azar de la misión",
         "export_label": "EXPORTAR MISIÓN",
         "export_csv_title": "Metadatos de las fotos cargadas (CSV)",
-        "export_geojson_title": "Huellas proyectadas de las fotos cargadas (GeoJSON)",
+        "export_geojson_title": (
+            "Huellas proyectadas de las fotos cargadas (GeoJSON)"
+        ),
         "connecting": "CONECTANDO CON EL ARCHIVO LPI…",
         "preview_alt": "Vista previa del fotograma Lunar Orbiter",
         "preview_caption": "VISTA PREVIA LPI",
         "preview_format": "JPG · ORIGINAL ONLINE",
         "open_record": "ABRIR REGISTRO ORIGINAL ↗",
-        "footer_source": "FUENTE DE IMAGEN Y METADATOS: LUNAR AND PLANETARY INSTITUTE",
+        "footer_source": (
+            "FUENTE DE IMAGEN Y METADATOS: LUNAR AND PLANETARY INSTITUTE"
+        ),
         "footer_rights": "LAS IMÁGENES PERTENECEN A SUS RESPECTIVOS TITULARES",
         "meta_mission": "MISIÓN",
         "meta_frame": "FOTOGRAMA",
@@ -69,28 +74,34 @@ TEXTS: dict[str, dict[str, str]] = {
         "footprint_approximate": "≈ {width} × {height} km (APROX.)",
         "meta_emission_check": "EMISIÓN LPI / CALCULADA",
         "emission_check": "{lpi}  /  {computed}  (Δ {delta})",
-        "emission_check_rejected": "{lpi}  /  {computed}  (Δ {delta} > {tolerance})",
+        "emission_check_rejected": (
+            "{lpi}  /  {computed}  (Δ {delta} > {tolerance})"
+        ),
         "note_emission_rejected": (
-            "La emisión calculada con la posición de la nave no coincide con la "
-            "del LPI: la foto no se proyecta y se dibuja como un parche "
+            "La emisión calculada con la posición de la nave no coincide con "
+            "la del LPI: la foto no se proyecta y se dibuja como un parche "
             "aproximado orientado al norte."
         ),
         "status_connection_error": "ERROR DE CONEXIÓN · {error}",
         "status_load_error": "NO SE PUDO CARGAR · {error}",
-        "status_frame_loaded": "LPI EN LÍNEA · {frame_id} · VISTA PREVIA RECIBIDA",
+        "status_frame_loaded": (
+            "LPI EN LÍNEA · {frame_id} · VISTA PREVIA RECIBIDA"
+        ),
         "status_mission_frames": "MISIÓN {mission} · {count} FOTOGRAMAS",
         "mosaic_unavailable": "MOSAICO NO DISPONIBLE · {error}",
         "mosaic_failed": " · {count} SIN DATOS",
         "mosaic_done": "MOSAICO · {count} FOTOS EN LA ESFERA{failed}",
         "mosaic_loading": "DESCARGANDO MOSAICO · {loaded}/{total}",
-        "error_invalid_frame_id": "El identificador del fotograma debe contener "
-        "solo números.",
-        "error_no_coordinates": "No se encontraron coordenadas para el fotograma "
-        "{frame_id}.",
-        "error_no_preview": "No se encontró una vista previa para el fotograma "
-        "{frame_id}.",
+        "error_invalid_frame_id": "El identificador del fotograma debe "
+        "contener solo números.",
+        "error_no_coordinates": "No se encontraron coordenadas para el "
+        "fotograma {frame_id}.",
+        "error_no_preview": "No se encontró una vista previa para el "
+        "fotograma {frame_id}.",
         "error_invalid_mission": "La misión debe estar entre 1 y {missions}.",
-        "error_no_frames": "No se encontraron fotogramas para la misión {mission}.",
+        "error_no_frames": (
+            "No se encontraron fotogramas para la misión {mission}."
+        ),
     },
     "en": {
         "html_lang": "en",
@@ -102,19 +113,22 @@ TEXTS: dict[str, dict[str, str]] = {
         "eyebrow": "PHOTOGRAPHIC SURVEY · 1966—1967",
         "title": "Lunar orbital atlas",
         "title_note": (
-            "Historic frames from the LPI archive projected onto an interactive globe."
+            "Historic frames from the LPI archive projected onto an "
+            "interactive globe."
         ),
         "tab_atlas": "Atlas",
         "tab_moon": "The Moon",
         "tab_program": "Lunar Orbiter program",
-        "globe_label": "3D VIEW  /  DRAG TO ROTATE · CLICK A PHOTO FOR ITS DETAILS",
+        "globe_label": (
+            "3D VIEW  /  DRAG TO ROTATE · CLICK A PHOTO FOR ITS DETAILS"
+        ),
         "globe_note": "PROJECTED FROM THE SPACECRAFT · ORIENTATION ESTIMATED",
         "labels_toggle": "LABELS",
         "legend_high_altitude": "HIGH-ALTITUDE FRAME (> {km} KM)",
         "note_high_altitude": (
-            "High-altitude frame: it covers a wide area and is projected onto the "
-            "part of the Moon it photographed. Its orientation is estimated from "
-            "the lunar limb visible in the image."
+            "High-altitude frame: it covers a wide area and is projected onto "
+            "the part of the Moon it photographed. Its orientation is "
+            "estimated from the lunar limb visible in the image."
         ),
         "archive_kicker": "IMAGE ARCHIVE",
         "frame_heading": "Frame",
@@ -126,13 +140,17 @@ TEXTS: dict[str, dict[str, str]] = {
         "random_title": "Load a random frame of the mission",
         "export_label": "EXPORT MISSION",
         "export_csv_title": "Metadata of the loaded photos (CSV)",
-        "export_geojson_title": "Projected footprints of the loaded photos (GeoJSON)",
+        "export_geojson_title": (
+            "Projected footprints of the loaded photos (GeoJSON)"
+        ),
         "connecting": "CONNECTING TO THE LPI ARCHIVE…",
         "preview_alt": "Preview of the Lunar Orbiter frame",
         "preview_caption": "LPI PREVIEW",
         "preview_format": "JPG · ORIGINAL ONLINE",
         "open_record": "OPEN ORIGINAL RECORD ↗",
-        "footer_source": "IMAGE AND METADATA SOURCE: LUNAR AND PLANETARY INSTITUTE",
+        "footer_source": (
+            "IMAGE AND METADATA SOURCE: LUNAR AND PLANETARY INSTITUTE"
+        ),
         "footer_rights": "IMAGES BELONG TO THEIR RESPECTIVE OWNERS",
         "meta_mission": "MISSION",
         "meta_frame": "FRAME",
@@ -150,11 +168,13 @@ TEXTS: dict[str, dict[str, str]] = {
         "footprint_approximate": "≈ {width} × {height} km (APPROX.)",
         "meta_emission_check": "EMISSION LPI / COMPUTED",
         "emission_check": "{lpi}  /  {computed}  (Δ {delta})",
-        "emission_check_rejected": "{lpi}  /  {computed}  (Δ {delta} > {tolerance})",
+        "emission_check_rejected": (
+            "{lpi}  /  {computed}  (Δ {delta} > {tolerance})"
+        ),
         "note_emission_rejected": (
-            "The emission implied by the spacecraft position does not match the "
-            "LPI's: the photo is not projected and is drawn as an approximate "
-            "north-up patch."
+            "The emission implied by the spacecraft position does not match "
+            "the LPI's: the photo is not projected and is drawn as an "
+            "approximate north-up patch."
         ),
         "status_connection_error": "CONNECTION ERROR · {error}",
         "status_load_error": "COULD NOT LOAD · {error}",
@@ -167,7 +187,9 @@ TEXTS: dict[str, dict[str, str]] = {
         "error_invalid_frame_id": "The frame ID must contain digits only.",
         "error_no_coordinates": "No coordinates found for frame {frame_id}.",
         "error_no_preview": "No preview found for frame {frame_id}.",
-        "error_invalid_mission": "The mission must be between 1 and {missions}.",
+        "error_invalid_mission": (
+            "The mission must be between 1 and {missions}."
+        ),
         "error_no_frames": "No frames found for mission {mission}.",
     },
 }
@@ -176,15 +198,17 @@ TEXTS: dict[str, dict[str, str]] = {
 def normalize_language(lang: str | None, default: str = "es") -> str:
     """Return a supported language code, falling back to ``default``.
 
-    Only the first two letters count, case-insensitively, so ``"EN-us"`` gives
-    ``"en"``. Unsupported or empty values give ``default``.
+    Only the first two letters count, case-insensitively, so ``"EN-us"``
+    gives ``"en"``. Unsupported or empty values give ``default``.
     """
     lang = (lang or "").lower()[:2]
     return lang if lang in LANGUAGES else default
 
 
 def t(lang: str, key: str, **params: object) -> str:
-    """Return the text for ``key`` in ``lang``, formatted with ``params``.
+    """Return the text for ``key`` in ``lang``.
+
+    Formatted with ``params``.
 
     Parameters
     ----------

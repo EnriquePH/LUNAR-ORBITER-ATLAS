@@ -18,14 +18,16 @@ if [[ ! -x "$python" ]]; then
     "$python" -m pip install --quiet -e .
 fi
 
-port=$("$python" -c 'from orbiter.config import load_config; print(load_config().port)')
+port=$("$python" -c \
+    'from orbiter.config import load_config; print(load_config().port)')
 
 stop_viewer() {
     local holders pid command
     holders=$(lsof -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
     for pid in $holders; do
         command=$(ps -o args= -p "$pid" || true)
-        if [[ "$command" == *"orbiter.app"* || "$command" == *"lunar-orbiter"* ]]; then
+        if [[ "$command" == *"orbiter.app"* ||
+              "$command" == *"lunar-orbiter"* ]]; then
             echo "Stopping viewer (PID $pid) on port $port"
             kill "$pid"
             for _ in $(seq 20); do

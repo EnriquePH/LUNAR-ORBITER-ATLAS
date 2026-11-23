@@ -1,23 +1,27 @@
-"""Plotly figure for the lunar globe: base sphere, frame tiles and selection.
+"""Plotly figure for the lunar globe.
 
-When the LPI lists the spacecraft position, a frame is **projected**: every
-pixel becomes a ray from the spacecraft through the camera aimed at the
-principal point, and lands where that ray meets the Moon. Oblique and
-high-altitude shots therefore cover the part of the sphere they actually
-photographed; pixels that see sky or the Earth fall off the Moon and are
-dropped. The image's roll is not published and is inferred (see
-:func:`frame_camera`). Terrain is ignored.
+Base sphere, frame tiles and selection.
 
-The LPI thumbnail shows the medium-resolution frame (80 mm lens) when the
-gallery has one, and otherwise the middle third of the high-resolution frame
-(610 mm lens), which is centred on the same principal point.
+When the LPI lists the spacecraft position, a frame is **projected**:
+every pixel becomes a ray from the spacecraft through the camera aimed
+at the principal point, and lands where that ray meets the Moon. Oblique
+and high-altitude shots therefore cover the part of the sphere they
+actually photographed; pixels that see sky or the Earth fall off the
+Moon and are dropped. The image's roll is not published and is inferred
+(see :func:`frame_camera`). Terrain is ignored.
 
-Frames without a spacecraft position fall back to a north-up patch centred on
-the principal point, sized from the altitude.
+The LPI thumbnail shows the medium-resolution frame (80 mm lens) when
+the gallery has one, and otherwise the middle third of the
+high-resolution frame (610 mm lens), which is centred on the same
+principal point.
 
-Coordinates are selenographic degrees (north and east positive, longitudes in
--180..180 or any equivalent value). The globe is a unit sphere in Plotly scene
-coordinates; ``x`` points to 0° E, ``y`` to 90° E and ``z`` to the north pole.
+Frames without a spacecraft position fall back to a north-up patch
+centred on the principal point, sized from the altitude.
+
+Coordinates are selenographic degrees (north and east positive,
+longitudes in -180..180 or any equivalent value). The globe is a unit
+sphere in Plotly scene coordinates; ``x`` points to 0° E, ``y`` to 90° E
+and ``z`` to the north pole.
 """
 
 from __future__ import annotations
@@ -33,38 +37,42 @@ from PIL import Image
 ACCENT = "#ff7547"
 BASE_SURFACE_VALUE = 112.0
 MOON_RADIUS_KM = 1737.4
-# Ground width covered per km of altitude by the medium-resolution camera
-# (about 31.6 x 37.4 km from 46 km); a rough, nadir-only approximation.
+# Ground width covered per km of altitude by the medium-resolution
+# camera (about 31.6 x 37.4 km from 46 km); a rough, nadir-only
+# approximation.
 FOOTPRINT_PER_ALTITUDE = 0.75
 FALLBACK_PATCH_DEGREES = 6.0
 MIN_PATCH_DEGREES = 0.5
 MAX_PATCH_DEGREES = 30.0
-# (focal length, (short side, long side)) in mm. Medium resolution: 31.6 x 37.4
-# km from 46 km. High resolution: the 55 x 218 mm frame is split into three
-# sub-frames; thumbnails show the middle one.
+# (focal length, (short side, long side)) in mm. Medium resolution: 31.6
+# x 37.4 km from 46 km. High resolution: the 55 x 218 mm frame is split
+# into three sub-frames; thumbnails show the middle one.
 CAMERAS = {
     "medium": (80.0, (55.0, 65.0)),
     "high": (610.0, (55.0, 218.0 / 3)),
 }
-# Above this altitude a frame covers a large, strongly curved area; it is
-# outlined on the globe and flagged in the side panel.
+# Above this altitude a frame covers a large, strongly curved area; it
+# is outlined on the globe and flagged in the side panel.
 HIGH_ALTITUDE_KM = 1000.0
 OUTLINE_SAMPLES = 24
 # Footprints (side panel and exports): samples along the central row and
-# column, directions traced from the principal point for the outline, and
-# bisection steps to find the limb on each (to 2^-30 of the frame).
+# column, directions traced from the principal point for the outline,
+# and bisection steps to find the limb on each (to 2^-30 of the frame).
 FOOTPRINT_SAMPLES = 129
 OUTLINE_RAYS = 96
 LIMB_BISECTIONS = 30
-# The LPI's emission angle must agree with the one implied by the spacecraft
-# position; otherwise the metadata is inconsistent and the frame is not
-# projected. Over 890 frames the median gap is 0.06° and 95% are under 0.35°.
+# The LPI's emission angle must agree with the one implied by the
+# spacecraft position; otherwise the metadata is inconsistent and the
+# frame is not projected. Over 890 frames the median gap is 0.06° and
+# 95% are under 0.35°.
 EMISSION_TOLERANCE_DEGREES = 5.0
-# Oblique frames are shown level, horizon up; near-vertical ones north-up.
+# Oblique frames are shown level, horizon up; near-vertical ones
+# north-up.
 LEVEL_CAMERA_MIN_EMISSION = 20.0
-# High-altitude frames may be rolled so that their off-Moon pixels land on the
-# texture's black sky: that area must be dark, clearly darker than the Moon,
-# cover a real share of the frame, and beat the next roll by a clear margin.
+# High-altitude frames may be rolled so that their off-Moon pixels land
+# on the texture's black sky: that area must be dark, clearly darker
+# than the Moon, cover a real share of the frame, and beat the next roll
+# by a clear margin.
 SKY_MAX_BRIGHTNESS = 45.0
 SKY_MATCH_MARGIN = 30.0
 SKY_MIN_SHARE = 0.03
@@ -82,12 +90,14 @@ LABEL_RADIUS = 1.008
 MARKER_RADIUS = 1.009
 LABEL_COLOR = "#ffd9c9"
 SELECTED_LABEL_COLOR = ACCENT
-# Pole labels sit just outside the sphere; the axis range must include them.
+# Pole labels sit just outside the sphere; the axis range must include
+# them.
 POLE_LABEL_HEIGHT = 1.18
 AXIS_LIMIT = 1.25
-# Plotly colours meshes per vertex, so every texture pixel is a vertex. Tiles get
-# pixels in proportion to their size on the globe, within these bounds, and the
-# whole mosaic is scaled down to stay under the vertex budget.
+# Plotly colours meshes per vertex, so every texture pixel is a vertex.
+# Tiles get pixels in proportion to their size on the globe, within
+# these bounds, and the whole mosaic is scaled down to stay under the
+# vertex budget.
 TILE_PIXELS_PER_DEGREE = 3.0
 MIN_TILE_PIXELS = 10
 MAX_TILE_PIXELS = 48
@@ -111,19 +121,19 @@ class GlobeImage:
     altitude_km : float or None
         Spacecraft altitude in km, or ``None`` if unknown.
     texture : numpy.ndarray
-        2-D ``uint8`` grayscale array (rows top to bottom), 0 black to 255
-        white. Its aspect sets the frame's.
+        2-D ``uint8`` grayscale array (rows top to bottom), 0 black to
+        255 white. Its aspect sets the frame's.
     spacecraft_latitude : float or None
         Spacecraft sub-point latitude in degrees, or ``None``. With the
         longitude and altitude it enables projection.
     spacecraft_longitude : float or None
         Spacecraft sub-point longitude in degrees.
     emission_angle : float or None
-        LPI emission angle in degrees, used to reject inconsistent spacecraft
-        positions; ``None`` skips the check.
+        LPI emission angle in degrees, used to reject inconsistent
+        spacecraft positions; ``None`` skips the check.
     camera : str
-        ``"medium"`` (80 mm) or ``"high"`` (610 mm, middle sub-frame): which
-        camera the texture comes from.
+        ``"medium"`` (80 mm) or ``"high"`` (610 mm, middle sub-frame):
+        which camera the texture comes from.
     """
 
     frame_id: str
@@ -139,7 +149,10 @@ class GlobeImage:
     @property
     def is_high_altitude(self) -> bool:
         """Whether the frame was taken above ``HIGH_ALTITUDE_KM``."""
-        return self.altitude_km is not None and self.altitude_km > HIGH_ALTITUDE_KM
+        return (
+            self.altitude_km is not None
+            and self.altitude_km > HIGH_ALTITUDE_KM
+        )
 
 
 @dataclass(frozen=True)
@@ -155,7 +168,8 @@ class FrameCamera:
     right : numpy.ndarray
         Unit vector along the image's columns (east for north-up).
     up : numpy.ndarray
-        Unit vector along the image's rows, towards the top of the image.
+        Unit vector along the image's rows, towards the top of the
+        image.
     half_width : float
         Half the frame width divided by the focal length.
     half_height : float
@@ -170,7 +184,7 @@ class FrameCamera:
     half_height: float
 
     def rays(self, horizontal: np.ndarray, vertical: np.ndarray) -> np.ndarray:
-        """Return unit ray directions for image-plane offsets in focal units."""
+        """Return unit rays for image-plane offsets in focal units."""
         directions = (
             self.forward
             + horizontal[..., None] * self.right
@@ -178,7 +192,9 @@ class FrameCamera:
         )
         return directions / np.linalg.norm(directions, axis=-1, keepdims=True)
 
-    def hit_sphere(self, directions: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def hit_sphere(
+        self, directions: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Intersect rays with the unit sphere.
 
         Returns
@@ -199,7 +215,7 @@ class FrameCamera:
         return points, hit
 
     def sees(self, point: np.ndarray) -> bool:
-        """Whether a point on the unit sphere is visible inside the frame."""
+        """Tell whether a unit-sphere point is inside the frame."""
         view = point - self.position
         if float(point @ -view) <= 0:  # on the far side of the Moon
             return False
@@ -208,17 +224,20 @@ class FrameCamera:
             return False
         horizontal = float(view @ self.right) / depth
         vertical = float(view @ self.up) / depth
-        return abs(horizontal) <= self.half_width and abs(vertical) <= self.half_height
+        return (
+            abs(horizontal) <= self.half_width
+            and abs(vertical) <= self.half_height
+        )
 
 
 def camera_of(preview_url: str) -> str:
-    """Tell which camera a frame's LPI preview (and thumbnail) comes from.
+    """Tell which camera a frame's LPI preview and thumbnail come from.
 
     Parameters
     ----------
     preview_url : str
-        URL chosen by :func:`orbiter.lpi.parse_frame_page`, which prefers the
-        medium-resolution ``_med`` image when there is one.
+        URL chosen by :func:`orbiter.lpi.parse_frame_page`, which
+        prefers the medium-resolution ``_med`` image when there is one.
 
     Returns
     -------
@@ -229,21 +248,25 @@ def camera_of(preview_url: str) -> str:
 
 
 def frame_camera(image: GlobeImage) -> FrameCamera | None:
-    """Build the camera of a frame, or ``None`` if it cannot be projected.
+    """Build the camera of a frame.
 
-    Returns ``None`` without a spacecraft position, when the principal point
-    would not be visible from the spacecraft, or when the implied emission
-    angle disagrees with the LPI's by more than ``EMISSION_TOLERANCE_DEGREES``
-    (a few frames have inconsistent metadata).
+    Or ``None`` if it cannot be projected.
+
+    Returns ``None`` without a spacecraft position, when the principal
+    point would not be visible from the spacecraft, or when the implied
+    emission angle disagrees with the LPI's by more than
+    ``EMISSION_TOLERANCE_DEGREES`` (a few frames have inconsistent
+    metadata).
 
     The image's roll is not published, so it is inferred:
 
-    - near-vertical frames (emission under ``LEVEL_CAMERA_MIN_EMISSION``) are
-      north-up;
-    - oblique frames are level, with the horizon at the top of the image, as
-      the LPI shows them;
-    - high-altitude frames that see past the limb take the quarter-turn whose
-      off-Moon pixels fall on the texture's black sky, when one clearly does.
+    - near-vertical frames (emission under
+      ``LEVEL_CAMERA_MIN_EMISSION``) are north-up;
+    - oblique frames are level, with the horizon at the top of the
+      image, as the LPI shows them;
+    - high-altitude frames that see past the limb take the quarter-turn
+      whose off-Moon pixels fall on the texture's black sky, when one
+      clearly does.
 
     Cameras are cached per frame geometry, so the roll search runs once.
     """
@@ -268,8 +291,13 @@ def frame_camera(image: GlobeImage) -> FrameCamera | None:
 _CAMERA_CACHE: dict[tuple, FrameCamera | None] = {}
 
 
-def _view(image: GlobeImage) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
-    """Spacecraft position, principal point, view direction and emission (°)."""
+def _view(
+    image: GlobeImage,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+    """Spacecraft position, principal point.
+
+    View direction and emission (°).
+    """
     position = np.array(
         selenographic_to_cartesian(
             image.spacecraft_latitude,
@@ -277,15 +305,22 @@ def _view(image: GlobeImage) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]
             1.0 + image.altitude_km / MOON_RADIUS_KM,
         )
     )
-    target = np.array(selenographic_to_cartesian(image.latitude, image.longitude))
+    target = np.array(
+        selenographic_to_cartesian(image.latitude, image.longitude)
+    )
     forward = target - position
     forward /= np.linalg.norm(forward)
-    emission = math.degrees(math.acos(float(np.clip(-forward @ target, -1.0, 1.0))))
+    emission = math.degrees(
+        math.acos(float(np.clip(-forward @ target, -1.0, 1.0)))
+    )
     return position, target, forward, emission
 
 
 def _has_position(image: GlobeImage) -> bool:
-    """Tell whether the image has the altitude and sub-point needed to project it."""
+    """Tell whether the image can be projected.
+
+    It needs the altitude and the sub-point.
+    """
     return (
         image.altitude_km is not None
         and image.spacecraft_latitude is not None
@@ -296,9 +331,9 @@ def _has_position(image: GlobeImage) -> bool:
 def implied_emission_angle(image: GlobeImage) -> float | None:
     """Emission angle implied by the spacecraft position, in degrees.
 
-    It is the angle at the principal point between the local vertical and the
-    direction to the spacecraft; :func:`frame_camera` compares it with the
-    LPI's own value.
+    It is the angle at the principal point between the local vertical
+    and the direction to the spacecraft; :func:`frame_camera` compares
+    it with the LPI's own value.
 
     Returns
     -------
@@ -309,7 +344,10 @@ def implied_emission_angle(image: GlobeImage) -> float | None:
 
 
 def _build_camera(image: GlobeImage) -> FrameCamera | None:
-    """Build a frame's camera without caching it; see :func:`frame_camera`."""
+    """Build a frame's camera without caching it.
+
+    See :func:`frame_camera`.
+    """
     if not _has_position(image):
         return None
     position, target, forward, emission = _view(image)
@@ -322,9 +360,14 @@ def _build_camera(image: GlobeImage) -> FrameCamera | None:
         return None
 
     if emission >= LEVEL_CAMERA_MIN_EMISSION:
-        reference = target  # local vertical: a level camera, horizon at the top
+        reference = (
+            target  # local vertical: a level camera, horizon at the top
+        )
     else:
-        latitude, longitude = np.radians(image.latitude), np.radians(image.longitude)
+        latitude, longitude = (
+            np.radians(image.latitude),
+            np.radians(image.longitude),
+        )
         reference = np.array(
             [
                 -np.sin(latitude) * np.cos(longitude),
@@ -333,14 +376,19 @@ def _build_camera(image: GlobeImage) -> FrameCamera | None:
             ]
         )
     up = reference - (reference @ forward) * forward
-    if np.linalg.norm(up) < 1e-9:  # looking straight along the reference
-        up = np.cross(forward, [0.0, 0.0, 1.0] if abs(forward[2]) < 0.9 else [1, 0, 0])
+    # looking straight along the reference
+    if np.linalg.norm(up) < 1e-9:
+        up = np.cross(
+            forward, [0.0, 0.0, 1.0] if abs(forward[2]) < 0.9 else [1, 0, 0]
+        )
     up /= np.linalg.norm(up)
     right = np.cross(forward, up)
 
     height, width = image.texture.shape
     focal, (short, long) = CAMERAS[image.camera]
-    frame_width, frame_height = (short, long) if height >= width else (long, short)
+    frame_width, frame_height = (
+        (short, long) if height >= width else (long, short)
+    )
     base = FrameCamera(
         position=position,
         forward=forward,
@@ -364,10 +412,12 @@ def _rolled(camera: FrameCamera, quarter_turns: int) -> FrameCamera:
 
 
 def _sky_contrast(camera: FrameCamera, texture: np.ndarray) -> float | None:
-    """How much darker the predicted sky is than the Moon, if it looks like sky.
+    """How much darker the predicted sky is than the Moon.
 
-    Returns ``None`` unless both areas cover ``SKY_MIN_SHARE`` of the frame
-    and the predicted sky is darker than ``SKY_MAX_BRIGHTNESS``.
+    If it looks like sky.
+
+    Returns ``None`` unless both areas cover ``SKY_MIN_SHARE`` of the
+    frame and the predicted sky is darker than ``SKY_MAX_BRIGHTNESS``.
     """
     height, width = texture.shape
     horizontal, vertical = np.meshgrid(
@@ -385,7 +435,7 @@ def _sky_contrast(camera: FrameCamera, texture: np.ndarray) -> float | None:
 
 
 def _match_sky(camera: FrameCamera, texture: np.ndarray) -> FrameCamera:
-    """Pick the quarter-turn whose off-Moon pixels are the texture's black sky.
+    """Pick the quarter-turn whose off-Moon pixels are black sky.
 
     Keeps ``camera`` unless one roll is clearly the best match.
     """
@@ -415,14 +465,14 @@ class FrameGeometry:
     width_km : float
         Ground length across the image through its centre, in km.
     height_km : float
-        Ground length along the image through its centre, in km. For projected
-        frames only the part that lands on the Moon counts.
+        Ground length along the image through its centre, in km. For
+        projected frames only the part that lands on the Moon counts.
     projected : bool
-        ``True`` if the frame is projected from the spacecraft, ``False`` if it
-        falls back to the approximate north-up patch.
+        ``True`` if the frame is projected from the spacecraft,
+        ``False`` if it falls back to the approximate north-up patch.
     implied_emission : float or None
-        Emission angle implied by the spacecraft position, in degrees, or
-        ``None`` without one.
+        Emission angle implied by the spacecraft position, in degrees,
+        or ``None`` without one.
     """
 
     width_km: float
@@ -432,12 +482,15 @@ class FrameGeometry:
 
 
 def _border_distances(camera: FrameCamera, angles: np.ndarray) -> np.ndarray:
-    """How far the footprint reaches from the principal point, per direction.
+    """How far the footprint reaches from the principal point.
 
-    The part of the image plane that sees the Moon is convex and contains the
-    principal point, so along each direction (radians, 0 towards ``right``,
-    π/2 towards ``up``) it ends at the frame's edge or, before that, at the
-    limb, found by ``LIMB_BISECTIONS`` bisection steps.
+    Per direction.
+
+    The part of the image plane that sees the Moon is convex and
+    contains the principal point, so along each direction (radians, 0
+    towards ``right``, π/2 towards ``up``) it ends at the frame's edge
+    or, before that, at the limb, found by ``LIMB_BISECTIONS`` bisection
+    steps.
 
     Returns
     -------
@@ -447,12 +500,18 @@ def _border_distances(camera: FrameCamera, angles: np.ndarray) -> np.ndarray:
     cosines, sines = np.cos(angles), np.sin(angles)
     with np.errstate(divide="ignore"):
         edge = np.minimum(
-            camera.half_width / np.abs(cosines), camera.half_height / np.abs(sines)
+            camera.half_width / np.abs(cosines),
+            camera.half_height / np.abs(sines),
         )
 
     def hits(distance: np.ndarray) -> np.ndarray:
-        """Return, per direction, whether the ray at ``distance`` hits the Moon."""
-        return camera.hit_sphere(camera.rays(distance * cosines, distance * sines))[1]
+        """Return, per direction.
+
+        Whether the ray at ``distance`` hits the Moon.
+        """
+        return camera.hit_sphere(
+            camera.rays(distance * cosines, distance * sines)
+        )[1]
 
     inside, outside = np.zeros_like(edge), edge.copy()
     past_limb = ~hits(edge)
@@ -466,7 +525,10 @@ def _border_distances(camera: FrameCamera, angles: np.ndarray) -> np.ndarray:
 
 
 def _ground_length_km(camera: FrameCamera, horizontal, vertical) -> float:
-    """Length on the Moon of an image-plane polyline whose rays all hit it."""
+    """Return the length on the Moon of an image-plane polyline.
+
+    All the rays of the polyline hit the Moon.
+    """
     points, _ = camera.hit_sphere(camera.rays(horizontal, vertical))
     cosines = np.einsum("ij,ij->i", points[:-1], points[1:])
     return float(np.arccos(np.clip(cosines, -1.0, 1.0)).sum()) * MOON_RADIUS_KM
@@ -475,10 +537,10 @@ def _ground_length_km(camera: FrameCamera, horizontal, vertical) -> float:
 def frame_geometry(image: GlobeImage) -> FrameGeometry:
     """Measure a frame's footprint as drawn on the globe.
 
-    Projected frames are measured along the image's central row and column,
-    up to the frame's edges or the limb.
-    Fallback patches use :func:`patch_width_degrees`, a rough nadir estimate,
-    with the texture's aspect.
+    Projected frames are measured along the image's central row and
+    column, up to the frame's edges or the limb. Fallback patches use
+    :func:`patch_width_degrees`, a rough nadir estimate, with the
+    texture's aspect.
     """
     camera = frame_camera(image)
     if camera is None:
@@ -529,17 +591,17 @@ def selenographic_to_cartesian(
     latitude_degrees : float or numpy.ndarray
         Latitude in degrees, north positive; scalar or array.
     longitude_degrees : float or numpy.ndarray
-        Longitude in degrees, east positive; any equivalent value (``-170``
-        and ``190`` give the same point).
+        Longitude in degrees, east positive; any equivalent value
+        (``-170`` and ``190`` give the same point).
     radius : float, default 1.0
         Distance from the centre, in Moon radii (1 is the surface).
 
     Returns
     -------
     tuple of numpy.ndarray
-        ``(x, y, z)``: ``x`` towards 0° E, ``y`` towards 90° E, ``z`` towards
-        the north pole; arrays shaped like the inputs. Inverse of
-        :func:`cartesian_to_selenographic`.
+        ``(x, y, z)``: ``x`` towards 0° E, ``y`` towards 90° E, ``z``
+        towards the north pole; arrays shaped like the inputs. Inverse
+        of :func:`cartesian_to_selenographic`.
     """
     latitudes = np.radians(latitude_degrees)
     longitudes = np.radians(longitude_degrees)
@@ -550,12 +612,14 @@ def selenographic_to_cartesian(
     )
 
 
-def cartesian_to_selenographic(x: float, y: float, z: float) -> tuple[float, float]:
+def cartesian_to_selenographic(
+    x: float, y: float, z: float
+) -> tuple[float, float]:
     """Convert a scene point to (latitude, longitude) in degrees.
 
-    The point may lie at any non-zero distance from the centre (tiles float
-    slightly above the unit sphere). Longitude is returned in -180..180.
-    Inverse of :func:`selenographic_to_cartesian`.
+    The point may lie at any non-zero distance from the centre (tiles
+    float slightly above the unit sphere). Longitude is returned in
+    -180..180. Inverse of :func:`selenographic_to_cartesian`.
 
     Raises
     ------
@@ -566,12 +630,16 @@ def cartesian_to_selenographic(x: float, y: float, z: float) -> tuple[float, flo
     return math.degrees(math.asin(z / radius)), math.degrees(math.atan2(y, x))
 
 
-def patch_width_degrees(altitude_km: float | None, camera: str = "medium") -> float:
-    """Approximate east-west ground width of a frame, in degrees of lunar arc.
+def patch_width_degrees(
+    altitude_km: float | None, camera: str = "medium"
+) -> float:
+    """Approximate east-west ground width of a frame.
 
-    Uses ``FOOTPRINT_PER_ALTITUDE`` km of ground per km of altitude, derived
-    from the medium-resolution camera looking straight down, scaled by focal
-    length for the high-resolution one.
+    In degrees of lunar arc.
+
+    Uses ``FOOTPRINT_PER_ALTITUDE`` km of ground per km of altitude,
+    derived from the medium-resolution camera looking straight down,
+    scaled by focal length for the high-resolution one.
 
     Parameters
     ----------
@@ -583,8 +651,9 @@ def patch_width_degrees(altitude_km: float | None, camera: str = "medium") -> fl
     Returns
     -------
     float
-        ``FALLBACK_PATCH_DEGREES`` when the altitude is unknown; otherwise the
-        estimate clamped to ``MIN_PATCH_DEGREES``..``MAX_PATCH_DEGREES``.
+        ``FALLBACK_PATCH_DEGREES`` when the altitude is unknown;
+        otherwise the estimate clamped to
+        ``MIN_PATCH_DEGREES``..``MAX_PATCH_DEGREES``.
     """
     if altitude_km is None:
         return FALLBACK_PATCH_DEGREES
@@ -599,21 +668,28 @@ def _patch_extent(image: GlobeImage) -> tuple[float, float]:
     height, width = image.texture.shape
     width_degrees = patch_width_degrees(image.altitude_km, image.camera)
     latitude_span = width_degrees * height / width
-    # Widen longitudes with latitude so the patch keeps its aspect on the sphere.
-    longitude_span = width_degrees / max(math.cos(math.radians(image.latitude)), 0.2)
+    # Widen longitudes with latitude so the patch keeps its aspect on
+    # the sphere.
+    longitude_span = width_degrees / max(
+        math.cos(math.radians(image.latitude)), 0.2
+    )
     return latitude_span, longitude_span
 
 
-def patch_contains(image: GlobeImage, latitude: float, longitude: float) -> bool:
-    """Tell whether a point in degrees falls inside an image's footprint.
+def patch_contains(
+    image: GlobeImage, latitude: float, longitude: float
+) -> bool:
+    """Tell whether a point in degrees is inside an image's footprint.
 
-    Projected frames test whether the camera saw the point. Fallback patches
-    compare longitudes modulo 360°, so patches that cross the 180° meridian
-    work and ``-170`` and ``190`` are the same longitude.
+    Projected frames test whether the camera saw the point. Fallback
+    patches compare longitudes modulo 360°, so patches that cross the
+    180° meridian work and ``-170`` and ``190`` are the same longitude.
     """
     camera = frame_camera(image)
     if camera is not None:
-        return camera.sees(np.array(selenographic_to_cartesian(latitude, longitude)))
+        return camera.sees(
+            np.array(selenographic_to_cartesian(latitude, longitude))
+        )
     latitude_span, longitude_span = _patch_extent(image)
     delta_longitude = (longitude - image.longitude + 180) % 360 - 180
     return (
@@ -625,9 +701,14 @@ def patch_contains(image: GlobeImage, latitude: float, longitude: float) -> bool
 def image_at(
     images: Iterable[GlobeImage], x: float, y: float, z: float
 ) -> GlobeImage | None:
-    """Return the image under a clicked point; overlaps go to the nearest centre."""
+    """Return the image under a clicked point.
+
+    Overlaps go to the nearest centre.
+    """
     latitude, longitude = cartesian_to_selenographic(x, y, z)
-    hits = [image for image in images if patch_contains(image, latitude, longitude)]
+    hits = [
+        image for image in images if patch_contains(image, latitude, longitude)
+    ]
     if not hits:
         return None
     return min(
@@ -666,8 +747,8 @@ def _patch_grid(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Cartesian grid with one vertex per texture pixel.
 
-    Projected frames put each vertex where its pixel's ray meets the Moon;
-    pixels whose rays miss (sky, the Earth) are NaN.
+    Projected frames put each vertex where its pixel's ray meets the
+    Moon; pixels whose rays miss (sky, the Earth) are NaN.
     """
     height, width = image.texture.shape
     camera = frame_camera(image)
@@ -696,12 +777,17 @@ def _patch_grid(
         image.longitude + longitude_span / 2,
         width,
     )
-    latitude_grid, longitude_grid = np.meshgrid(latitudes, longitudes, indexing="ij")
+    latitude_grid, longitude_grid = np.meshgrid(
+        latitudes, longitudes, indexing="ij"
+    )
     return selenographic_to_cartesian(latitude_grid, longitude_grid, radius)
 
 
 def _image_surface(image: GlobeImage, radius: float) -> go.Surface:
-    """Return one frame's texture as a ``Surface``, used for the selected photo."""
+    """Return one frame's texture as a ``Surface``.
+
+    Used for the selected photo.
+    """
     x_coordinates, y_coordinates, z_coordinates = _patch_grid(image, radius)
     return go.Surface(
         x=x_coordinates.astype(np.float32),
@@ -736,7 +822,10 @@ def _grid_triangles(height: int, width: int, offset: int) -> np.ndarray:
 
 
 def _resized(texture: np.ndarray, long_side: int) -> np.ndarray:
-    """Resize a texture so its longer side is ``long_side``, keeping its aspect."""
+    """Resize a texture so its longer side is ``long_side``.
+
+    Keeping its aspect.
+    """
     height, width = texture.shape
     scale = long_side / max(height, width)
     size = (max(2, round(width * scale)), max(2, round(height * scale)))
@@ -749,10 +838,11 @@ def _resized(texture: np.ndarray, long_side: int) -> np.ndarray:
 def tile_textures(tiles: list[GlobeImage]) -> list[np.ndarray]:
     """Choose each tile's mesh resolution from its size on the globe.
 
-    Big patches (high-altitude frames) get up to ``MAX_TILE_PIXELS`` on their
-    longer side and tiny ones ``MIN_TILE_PIXELS``. If the mosaic would exceed
-    ``MESH_VERTEX_BUDGET`` vertices, every tile shrinks by the same factor.
-    Textures are never enlarged beyond what the tile provides.
+    Big patches (high-altitude frames) get up to ``MAX_TILE_PIXELS`` on
+    their longer side and tiny ones ``MIN_TILE_PIXELS``. If the mosaic
+    would exceed ``MESH_VERTEX_BUDGET`` vertices, every tile shrinks by
+    the same factor. Textures are never enlarged beyond what the tile
+    provides.
     """
     wanted = [
         min(
@@ -768,7 +858,8 @@ def tile_textures(tiles: list[GlobeImage]) -> list[np.ndarray]:
         )
         for tile in tiles
     ]
-    # Vertices are about long_side² × aspect, so area scales with the square.
+    # Vertices are about long_side² × aspect, so area scales with the
+    # square.
     area = sum(
         side * side * min(tile.texture.shape) / max(tile.texture.shape)
         for side, tile in zip(wanted, tiles, strict=True)
@@ -781,12 +872,15 @@ def tile_textures(tiles: list[GlobeImage]) -> list[np.ndarray]:
 
 
 def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
-    """Merge every tile into one mesh: one WebGL draw call instead of hundreds.
+    """Merge every tile into one mesh.
 
-    Brightness travels as ``uint8`` intensity, which Plotly sends in binary.
-    Frame IDs are per-vertex ``customdata`` for the hover label and clicks;
-    they go as a plain list, because Dash reads a clicked point's
-    ``customdata`` back from the figure by index, which fails on binary arrays.
+    One WebGL draw call instead of hundreds.
+
+    Brightness travels as ``uint8`` intensity, which Plotly sends in
+    binary. Frame IDs are per-vertex ``customdata`` for the hover label
+    and clicks; they go as a plain list, because Dash reads a clicked
+    point's ``customdata`` back from the figure by index, which fails on
+    binary arrays.
     """
     coordinates, intensities, triangles, frame_ids = [], [], [], []
     offset = 0
@@ -795,7 +889,9 @@ def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
     ):
         radius = TILE_RADIUS + TILE_RADIUS_STEP * (index % 7)
         resized = replace(tile, texture=texture)
-        grid = np.stack([axis.ravel() for axis in _patch_grid(resized, radius)], axis=1)
+        grid = np.stack(
+            [axis.ravel() for axis in _patch_grid(resized, radius)], axis=1
+        )
         height, width = texture.shape
         # Drop triangles that touch a pixel whose ray missed the Moon.
         on_moon = ~np.isnan(grid[:, 0])
@@ -805,7 +901,9 @@ def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
         coordinates.append(grid)
         intensities.append(texture.ravel())
         triangles.append(cells + offset)
-        frame_ids.append(np.full(len(grid), int(tile.frame_id), dtype=np.int16))
+        frame_ids.append(
+            np.full(len(grid), int(tile.frame_id), dtype=np.int16)
+        )
         offset += len(grid)
 
     vertices = np.concatenate(coordinates).astype(np.float32)
@@ -831,7 +929,10 @@ def _tiles_mesh(tiles: list[GlobeImage]) -> go.Mesh3d:
 
 
 def _outline(image: GlobeImage, radius: float) -> np.ndarray:
-    """Points along a frame's border on the sphere, ending with a NaN break."""
+    """Points along a frame's border on the sphere.
+
+    Ending with a NaN break.
+    """
     samples = np.linspace(-1.0, 1.0, OUTLINE_SAMPLES)
     camera = frame_camera(image)
     if camera is not None:
@@ -874,7 +975,9 @@ def _outline(image: GlobeImage, radius: float) -> np.ndarray:
             ]
         )
         points = np.stack(
-            selenographic_to_cartesian(np.clip(latitudes, -90, 90), longitudes, radius),
+            selenographic_to_cartesian(
+                np.clip(latitudes, -90, 90), longitudes, radius
+            ),
             axis=1,
         )
     return np.vstack([points, np.full((1, 3), np.nan)])
@@ -883,12 +986,12 @@ def _outline(image: GlobeImage, radius: float) -> np.ndarray:
 def footprint_outline(image: GlobeImage) -> list[tuple[float, float]]:
     """Border of a frame's footprint on the Moon, as drawn on the globe.
 
-    For projected frames the border is the part of the image plane whose rays
-    hit the Moon: the frame's edges, cut by the limb where the camera saw past
-    it (a whole-disc shot gives the limb alone). That region is convex and
-    contains the principal point, so the border is traced along
-    ``OUTLINE_RAYS`` directions from it, plus the four corners; on each, the
-    limb is found by bisection.
+    For projected frames the border is the part of the image plane whose
+    rays hit the Moon: the frame's edges, cut by the limb where the
+    camera saw past it (a whole-disc shot gives the limb alone). That
+    region is convex and contains the principal point, so the border is
+    traced along ``OUTLINE_RAYS`` directions from it, plus the four
+    corners; on each, the limb is found by bisection.
 
     Returns
     -------
@@ -899,7 +1002,8 @@ def footprint_outline(image: GlobeImage) -> list[tuple[float, float]]:
     camera = frame_camera(image)
     if camera is None:
         return [
-            cartesian_to_selenographic(*point) for point in _outline(image, 1.0)[:-1]
+            cartesian_to_selenographic(*point)
+            for point in _outline(image, 1.0)[:-1]
         ]
     width, height = camera.half_width, camera.half_height
     corners = np.arctan2(
@@ -918,21 +1022,25 @@ def footprint_outline(image: GlobeImage) -> list[tuple[float, float]]:
 
 
 def _high_altitude_outlines(images: list[GlobeImage]) -> go.Scatter3d | None:
-    """Outline frames taken above ``HIGH_ALTITUDE_KM`` so they stand out.
+    """Outline frames above ``HIGH_ALTITUDE_KM`` so they stand out.
 
-    ``hoverinfo="skip"`` lets clicks on the outline reach the photo below.
+    ``hoverinfo="skip"`` lets clicks on the outline reach the photo
+    below.
     """
     high = [image for image in images if image.is_high_altitude]
     if not high:
         return None
-    points = np.vstack([_outline(image, SELECTED_RADIUS + 0.002) for image in high])
+    points = np.vstack(
+        [_outline(image, SELECTED_RADIUS + 0.002) for image in high]
+    )
     return go.Scatter3d(
         x=points[:, 0],
         y=points[:, 1],
         z=points[:, 2],
         name="high-altitude",
         mode="lines",
-        # Thin and translucent: mission 4 has 131 overlapping high frames.
+        # Thin and translucent: mission 4 has 131 overlapping high
+        # frames.
         line={"color": REFERENCE_COLOR, "width": 1},
         opacity=0.4,
         connectgaps=False,
@@ -945,8 +1053,8 @@ def _frame_labels(
 ) -> go.Scatter3d | None:
     """Frame ID at the centre of each photo (its principal point).
 
-    The selected photo's label takes the accent colour and sits above its
-    marker, so the photo shown in the side panel stands out.
+    The selected photo's label takes the accent colour and sits above
+    its marker, so the photo shown in the side panel stands out.
     ``hoverinfo="skip"`` lets clicks on a label reach the photo below.
     """
     if not images:
@@ -965,7 +1073,8 @@ def _frame_labels(
         mode="text",
         text=[image.frame_id for image in images],
         textposition=[
-            "top center" if is_selected else "middle center" for is_selected in selected
+            "top center" if is_selected else "middle center"
+            for is_selected in selected
         ],
         textfont={
             "color": [
@@ -980,7 +1089,10 @@ def _frame_labels(
 
 
 def _marker(image: GlobeImage) -> go.Scatter3d:
-    """Accent dot on the selection; its label is in :func:`_frame_labels`."""
+    """Accent dot on the selection.
+
+    Its label is in :func:`_frame_labels`.
+    """
     x_coordinate, y_coordinate, z_coordinate = selenographic_to_cartesian(
         image.latitude, image.longitude, MARKER_RADIUS
     )
@@ -991,7 +1103,8 @@ def _marker(image: GlobeImage) -> go.Scatter3d:
         mode="markers",
         marker={"size": 4, "color": ACCENT},
         hovertext=[
-            f"{image.frame_id} · {format_coordinates(image.latitude, image.longitude)}"
+            f"{image.frame_id} · "
+            f"{format_coordinates(image.latitude, image.longitude)}"
         ],
         hoverinfo="text",
     )
@@ -1000,8 +1113,9 @@ def _marker(image: GlobeImage) -> go.Scatter3d:
 def _reference_marks() -> list[go.Scatter3d]:
     """Dotted equator plus labelled north and south poles.
 
-    ``hoverinfo="skip"`` keeps them from producing hover or click events, so a
-    click near the equator still reaches the photo underneath.
+    ``hoverinfo="skip"`` keeps them from producing hover or click
+    events, so a click near the equator still reaches the photo
+    underneath.
     """
     longitudes = np.linspace(-180, 180, 181)
     x_coordinates, y_coordinates, z_coordinates = selenographic_to_cartesian(
@@ -1024,10 +1138,20 @@ def _reference_marks() -> list[go.Scatter3d]:
         mode="markers+text",
         marker={"size": [5, 5, 0, 0], "color": REFERENCE_COLOR},
         text=["", "", "N", "S"],
-        # Scatter3d draws text above its point by default, which would pull the
-        # S towards the sphere; push each label away from the Moon instead.
-        textposition=["middle center", "middle center", "top center", "bottom center"],
-        textfont={"color": REFERENCE_COLOR, "family": "DM Mono, monospace", "size": 13},
+        # Scatter3d draws text above its point by default, which would
+        # pull the S towards the sphere; push each label away from the
+        # Moon instead.
+        textposition=[
+            "middle center",
+            "middle center",
+            "top center",
+            "bottom center",
+        ],
+        textfont={
+            "color": REFERENCE_COLOR,
+            "family": "DM Mono, monospace",
+            "size": 13,
+        },
         hoverinfo="skip",
     )
     return [equator, poles]
@@ -1036,7 +1160,10 @@ def _reference_marks() -> list[go.Scatter3d]:
 def _camera_eye(
     latitude: float, longitude: float, distance: float = CAMERA_DISTANCE
 ) -> dict[str, float]:
-    """Return the Plotly eye position of a point at ``distance`` from the centre."""
+    """Return the Plotly eye position of a point.
+
+    The point is at ``distance`` from the centre.
+    """
     x_coordinate, y_coordinate, z_coordinate = selenographic_to_cartesian(
         latitude, longitude, distance
     )
@@ -1059,8 +1186,8 @@ def focus_camera(
     longitude : float
         Longitude of the point to face, in degrees.
     distance : float, default CAMERA_DISTANCE
-        Eye distance from the centre, in Plotly eye units (the starting view is
-        ``CAMERA_DISTANCE``); keeps the current zoom.
+        Eye distance from the centre, in Plotly eye units (the starting
+        view is ``CAMERA_DISTANCE``); keeps the current zoom.
 
     Returns
     -------
@@ -1075,10 +1202,15 @@ def focus_camera(
 
 
 def camera_distance(camera: dict | None) -> float | None:
-    """Eye distance of a Plotly ``scene.camera`` dict, or ``None`` if unusable."""
+    """Eye distance of a Plotly ``scene.camera`` dict.
+
+    Or ``None`` if unusable.
+    """
     try:
         eye = camera["eye"]
-        return math.sqrt(sum(float(eye[axis]) ** 2 for axis in ("x", "y", "z")))
+        return math.sqrt(
+            sum(float(eye[axis]) ** 2 for axis in ("x", "y", "z"))
+        )
     except (KeyError, TypeError, ValueError):
         return None
 
@@ -1107,10 +1239,11 @@ def make_globe(
     show_labels: bool = True,
     camera: dict | None = None,
 ) -> go.Figure:
-    """Build the globe with every visible tile and the selected frame on top.
+    """Build the globe: every visible tile, the selected frame on top.
 
-    With ``show_labels``, each photo carries its frame ID at its centre and
-    the selection's label is drawn in the accent colour above its marker.
+    With ``show_labels``, each photo carries its frame ID at its centre
+    and the selection's label is drawn in the accent colour above its
+    marker.
 
     Parameters
     ----------
@@ -1123,10 +1256,10 @@ def make_globe(
     show_labels : bool, default True
         Whether to label each photo with its frame ID.
     camera : dict, optional
-        Plotly ``scene.camera`` to use, e.g. the user's current view; by default
-        the camera faces the selection (or the first tile) from
-        ``CAMERA_DISTANCE``. ``uirevision`` stays constant, so the view only
-        moves when this camera changes.
+        Plotly ``scene.camera`` to use, e.g. the user's current view; by
+        default the camera faces the selection (or the first tile) from
+        ``CAMERA_DISTANCE``. ``uirevision`` stays constant, so the view
+        only moves when this camera changes.
     """
     tiles = sorted(tiles, key=lambda tile: tile.frame_id)
     images = visible_images(selected, tiles, hidden)
@@ -1163,7 +1296,11 @@ def make_globe(
         hoverlabel={
             "bgcolor": "#181a1b",
             "bordercolor": ACCENT,
-            "font": {"family": "DM Mono, monospace", "color": "#e6e3dd", "size": 11},
+            "font": {
+                "family": "DM Mono, monospace",
+                "color": "#e6e3dd",
+                "size": 11,
+            },
         },
         uirevision="globe",
         scene={

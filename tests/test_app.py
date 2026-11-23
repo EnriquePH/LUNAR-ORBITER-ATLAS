@@ -1,4 +1,7 @@
-"""Tests for the Dash callbacks and page builders, called directly with fakes."""
+"""Tests for the Dash callbacks and page builders.
+
+Called directly with fakes.
+"""
 
 from io import BytesIO
 
@@ -58,7 +61,10 @@ def _frame(latitude=3.3, image_size=(48, 32), frame_id="1041", **extra):
 
 
 def _tile(frame_id, latitude, longitude):
-    """Build a small GlobeImage at the given position, with a black texture."""
+    """Build a small GlobeImage at the given position.
+
+    With a black texture.
+    """
     return GlobeImage(
         frame_id=frame_id,
         latitude=latitude,
@@ -69,7 +75,10 @@ def _tile(frame_id, latitude, longitude):
 
 
 class FakeLoader:
-    """Stand-in for MissionLoader: fixed progress, records the started missions."""
+    """Stand-in for MissionLoader.
+
+    Fixed progress, records the started missions.
+    """
 
     def __init__(self, progress=None):
         self.started = []
@@ -131,7 +140,9 @@ def test_update_frame_returns_all_outputs_on_success(monkeypatch):
         (requests.ConnectionError("sin red"), "ERROR DE CONEXIÓN"),
     ],
 )
-def test_update_frame_reports_errors_without_changing_view(monkeypatch, error, prefix):
+def test_update_frame_reports_errors_without_changing_view(
+    monkeypatch, error, prefix
+):
     def fail(frame_id):
         """Raise the stored error."""
         raise error
@@ -152,7 +163,9 @@ def test_update_frame_reports_errors_without_changing_view(monkeypatch, error, p
 def test_render_globe_combines_selection_and_mission_tiles(monkeypatch):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
     tiles = {"1005": _tile("1005", 0, 0), "1006": _tile("1006", 10, 10)}
-    monkeypatch.setattr(app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles)))
+    monkeypatch.setattr(
+        app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles))
+    )
 
     figure, *_ = render_globe("1041", 2, 1)
 
@@ -190,10 +203,12 @@ def test_metadata_rows_mark_missing_fields():
 
 
 def test_list_mission_frames_starts_mosaic(monkeypatch, loader):
-    monkeypatch.setattr(app_module, "fetch_mission_frames", lambda m: ["1005", "1006"])
+    monkeypatch.setattr(
+        app_module, "fetch_mission_frames", lambda m: ["1005", "1006"]
+    )
 
-    options, value, disabled, no_random, status, poll_off, count = list_mission_frames(
-        1
+    options, value, disabled, no_random, status, poll_off, count = (
+        list_mission_frames(1)
     )
 
     assert (options, value, disabled, no_random) == (
@@ -214,7 +229,9 @@ def test_list_mission_frames_reports_connection_error(monkeypatch, loader):
 
     monkeypatch.setattr(app_module, "fetch_mission_frames", fail)
 
-    options, value, disabled, no_random, status, poll_off, *_ = list_mission_frames(2)
+    options, value, disabled, no_random, status, poll_off, *_ = (
+        list_mission_frames(2)
+    )
 
     assert (options, value, disabled, no_random, poll_off) == (
         [],
@@ -233,10 +250,16 @@ def test_poll_mosaic_rerenders_in_steps_and_stops_when_finished(monkeypatch):
     monkeypatch.setattr(app_module, "LOADER", fake)
 
     status, count, poll_off = poll_mosaic(1, 1, 0)
-    assert (status, count, poll_off) == ("DESCARGANDO MOSAICO · 30/200", 30, False)
+    assert (status, count, poll_off) == (
+        "DESCARGANDO MOSAICO · 30/200",
+        30,
+        False,
+    )
     assert poll_mosaic(2, 1, 30)[1] is no_update
 
-    fake._progress = MissionProgress(total=31, failed=1, finished=True, tiles=tiles)
+    fake._progress = MissionProgress(
+        total=31, failed=1, finished=True, tiles=tiles
+    )
     status, count, poll_off = poll_mosaic(3, 1, 30)
     assert status == "MOSAICO · 30 FOTOS EN LA ESFERA · 1 SIN DATOS"
     assert (count, poll_off) == (no_update, True)
@@ -245,9 +268,15 @@ def test_poll_mosaic_rerenders_in_steps_and_stops_when_finished(monkeypatch):
 def test_click_selects_the_photo_without_hiding_it(monkeypatch):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
     tiles = {"1100": _tile("1100", -40, -120)}
-    monkeypatch.setattr(app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles)))
+    monkeypatch.setattr(
+        app_module, "LOADER", FakeLoader(MissionProgress(tiles=tiles))
+    )
     x, y, z = selenographic_to_cartesian(-40.2, -120.1, 1.003)
-    click = {"points": [{"x": x, "y": y, "z": z, "curveNumber": 1, "customdata": 1100}]}
+    click = {
+        "points": [
+            {"x": x, "y": y, "z": z, "curveNumber": 1, "customdata": 1100}
+        ]
+    }
 
     assert select_clicked_image(click, "1041") == ("1100", "1100")
     figure, *_ = render_globe("1041", 1, 1)
@@ -256,8 +285,9 @@ def test_click_selects_the_photo_without_hiding_it(monkeypatch):
 
 
 def test_click_selects_the_photo_named_in_the_hover_label():
-    # Overlapping photos: the point may lie nearer another photo's centre,
-    # but the one under the cursor is the one whose ID the vertex carries.
+    # Overlapping photos: the point may lie nearer another photo's
+    # centre, but the one under the cursor is the one whose ID the
+    # vertex carries.
     x, y, z = selenographic_to_cartesian(3.3, 39.15, 1.003)
     click = {"points": [{"x": x, "y": y, "z": z, "customdata": 1042}]}
 
@@ -270,12 +300,12 @@ def test_click_ignores_the_selection_and_points_without_a_frame():
     unchanged = (no_update, no_update)
     x, y, z = selenographic_to_cartesian(3.3, 39.15, 1.006)
     # The selected photo is drawn apart and carries no customdata.
-    assert select_clicked_image({"points": [{"x": x, "y": y, "z": z}]}, "1041") == (
-        unchanged
-    )
-    assert select_clicked_image({"points": [{"customdata": 1041}]}, "1041") == (
-        unchanged
-    )
+    assert select_clicked_image(
+        {"points": [{"x": x, "y": y, "z": z}]}, "1041"
+    ) == (unchanged)
+    assert select_clicked_image(
+        {"points": [{"customdata": 1041}]}, "1041"
+    ) == (unchanged)
     assert select_clicked_image({"points": []}, "1041") == unchanged
     assert select_clicked_image(None, "1041") == unchanged
 
@@ -351,7 +381,9 @@ def test_render_page_uses_query_string_language():
 
 
 def test_metadata_rows_flag_high_altitude_frames():
-    high = _row_values(metadata_rows(_frame(spacecraft_altitude_km=2900.0), "en"))
+    high = _row_values(
+        metadata_rows(_frame(spacecraft_altitude_km=2900.0), "en")
+    )
     rows = metadata_rows(_frame(spacecraft_altitude_km=2900.0), "en")
     low = metadata_rows(_frame(spacecraft_altitude_km=46.0), "en")
 
@@ -458,10 +490,14 @@ def test_render_globe_keeps_the_view_for_a_clicked_photo(monkeypatch, loader):
     assert camera["eye"]["x"] == pytest.approx(-0.8)
 
 
-def test_render_globe_turns_to_a_new_selection_keeping_the_zoom(monkeypatch, loader):
+def test_render_globe_turns_to_a_new_selection_keeping_the_zoom(
+    monkeypatch, loader
+):
     monkeypatch.setattr(app_module, "fetch_frame", lambda frame_id: _frame())
 
-    figure, focused, _, _ = render_globe("1041", 0, 1, ["on"], FAR_SIDE, None, "1005")
+    figure, focused, _, _ = render_globe(
+        "1041", 0, 1, ["on"], FAR_SIDE, None, "1005"
+    )
 
     eye = _eye(figure)
     assert np.linalg.norm(eye) == pytest.approx(0.8)
@@ -481,7 +517,8 @@ def test_remember_camera_keeps_only_whole_camera_updates():
     camera, figure = remember_camera({"scene.camera": FAR_SIDE})
 
     assert camera == FAR_SIDE
-    # The figure keeps the view too, for when the graph is mounted again.
+    # The figure keeps the view too, for when the graph is mounted
+    # again.
     assert isinstance(figure, Patch)
     assert "camera" in str(figure.to_plotly_json())
     unchanged = (no_update, no_update)

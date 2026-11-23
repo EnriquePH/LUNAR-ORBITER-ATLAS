@@ -11,7 +11,9 @@ from orbiter.export import CSV_FIELDS, footprints_geojson, mission_csv
 from orbiter.globe import GlobeImage
 
 
-def _image(frame_id="1041", longitude=39.15, spacecraft=(4.29, 41.17), **extra):
+def _image(
+    frame_id="1041", longitude=39.15, spacecraft=(4.29, 41.17), **extra
+):
     """Build a projected GlobeImage with a 65 x 55 texture."""
     return GlobeImage(
         frame_id=frame_id,
@@ -42,7 +44,9 @@ def test_mission_csv_merges_cached_metadata_and_geometry():
     assert rows[1]["mission"] == ""
     assert rows[1]["spacecraft_altitude_km"] == "256.43"
     assert rows[0]["projected"] == "True"
-    assert float(rows[0]["implied_emission_angle"]) == pytest.approx(17.04, abs=0.01)
+    assert float(rows[0]["implied_emission_angle"]) == pytest.approx(
+        17.04, abs=0.01
+    )
     assert float(rows[0]["footprint_width_km"]) > 0
 
 
@@ -68,7 +72,9 @@ def test_footprints_geojson_has_closed_counterclockwise_polygons():
 
 def test_footprints_geojson_keeps_frames_across_180_degrees_in_one_piece():
     collection = json.loads(
-        footprints_geojson([_image(longitude=179.9, spacecraft=(4.29, -178.0))])
+        footprints_geojson(
+            [_image(longitude=179.9, spacecraft=(4.29, -178.0))]
+        )
     )
 
     ring = collection["features"][0]["geometry"]["coordinates"][0]
@@ -77,7 +83,8 @@ def test_footprints_geojson_keeps_frames_across_180_degrees_in_one_piece():
 
 
 def test_footprints_geojson_closes_rings_around_a_pole():
-    # High over 60° N with the pole in view, as Lunar Orbiter 5 frame 5011.
+    # High over 60° N with the pole in view, as Lunar Orbiter 5 frame
+    # 5011.
     polar = GlobeImage(
         frame_id="5011",
         latitude=80.0,

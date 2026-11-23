@@ -1,4 +1,7 @@
-"""Tests for the frame cache, the background mission loader and the CLI."""
+"""Tests for the frame cache.
+
+The background mission loader and the CLI.
+"""
 
 import json
 import threading
@@ -33,7 +36,7 @@ def _jpeg(size=(120, 141)) -> bytes:
 
 
 class FakeSession:
-    """HTTP session stand-in that serves frame pages and thumbnails offline."""
+    """Stand-in HTTP session: frame pages and thumbnails, offline."""
 
     def __init__(self, fail_ids=()):
         self.headers = {}
@@ -41,9 +44,14 @@ class FakeSession:
         self.fail_ids = set(fail_ids)
 
     def get(self, url, timeout):
-        """Serve the page or thumbnail for ``url``; fail for IDs in ``fail_ids``."""
+        """Serve the page or thumbnail for ``url``.
+
+        Fail for IDs in ``fail_ids``.
+        """
         self.urls.append(url)
-        frame_id = url.rsplit("?", 1)[-1].rsplit("/", 1)[-1].removesuffix(".jpg")
+        frame_id = (
+            url.rsplit("?", 1)[-1].rsplit("/", 1)[-1].removesuffix(".jpg")
+        )
         if frame_id in self.fail_ids:
             raise requests.ConnectionError("sin red")
         if "/frame/" in url:
@@ -71,8 +79,15 @@ def test_tile_store_downloads_once_then_reads_disk(store, session, tmp_path):
 
     cached = again.load("1041")
 
-    assert (tile.latitude, tile.longitude, tile.altitude_km) == (3.3, 39.15, 256.43)
-    assert (tile.spacecraft_latitude, tile.spacecraft_longitude) == (4.29, 41.17)
+    assert (tile.latitude, tile.longitude, tile.altitude_km) == (
+        3.3,
+        39.15,
+        256.43,
+    )
+    assert (tile.spacecraft_latitude, tile.spacecraft_longitude) == (
+        4.29,
+        41.17,
+    )
     assert max(tile.texture.shape) <= max(TILE_SIZE)
     assert session.urls[-1] == thumbnail_url("1041")
     assert offline.urls == []
@@ -83,7 +98,7 @@ def test_tile_store_downloads_once_then_reads_disk(store, session, tmp_path):
 
 
 def _wait_until_finished(loader, mission):
-    """Poll ``loader`` until ``mission`` finishes and return its progress."""
+    """Poll ``loader`` until ``mission`` ends; return its progress."""
     for _ in range(200):
         if loader.progress(mission).finished:
             return loader.progress(mission)
@@ -99,7 +114,10 @@ def test_tile_store_spaces_request_starts(tmp_path, session, monkeypatch):
     original_get = session.get
 
     def recording_get(url, timeout):
-        """Record the scheduled start of each request, then fetch as usual."""
+        """Record the scheduled start of each request.
+
+        Then fetch as usual.
+        """
         starts.append(store._next_request)
         return original_get(url, timeout)
 
@@ -109,10 +127,13 @@ def test_tile_store_spaces_request_starts(tmp_path, session, monkeypatch):
     assert starts == [100.25, 100.5]
 
 
-def test_mission_loader_collects_tiles_and_counts_failures(store, session, monkeypatch):
+def test_mission_loader_collects_tiles_and_counts_failures(
+    store, session, monkeypatch
+):
     session.fail_ids = {"1006"}
     monkeypatch.setattr(
-        "orbiter.catalog.fetch_mission_frames", lambda m: ["1005", "1006", "1007"]
+        "orbiter.catalog.fetch_mission_frames",
+        lambda m: ["1005", "1006", "1007"],
     )
     loader = MissionLoader(store)
 
@@ -124,7 +145,9 @@ def test_mission_loader_collects_tiles_and_counts_failures(store, session, monke
     assert (progress.total, progress.failed, progress.error) == (3, 1, None)
 
 
-def test_mission_loader_reports_listing_error_and_allows_retry(store, monkeypatch):
+def test_mission_loader_reports_listing_error_and_allows_retry(
+    store, monkeypatch
+):
     def fail(mission):
         """Simulate a listing that cannot connect."""
         raise requests.ConnectionError("sin red")
@@ -134,7 +157,9 @@ def test_mission_loader_reports_listing_error_and_allows_retry(store, monkeypatc
     loader.start(2)
     assert str(_wait_until_finished(loader, 2).error) == "sin red"
 
-    monkeypatch.setattr("orbiter.catalog.fetch_mission_frames", lambda m: ["2001"])
+    monkeypatch.setattr(
+        "orbiter.catalog.fetch_mission_frames", lambda m: ["2001"]
+    )
     loader.start(2)
     assert sorted(_wait_until_finished(loader, 2).tiles) == ["2001"]
 
@@ -148,7 +173,9 @@ def test_download_fills_the_cache_and_reports_failures(
     )
     monkeypatch.setattr(
         "orbiter.catalog.TileStore",
-        lambda cache_dir: TileStore(tmp_path, delay=0, session_factory=lambda: session),
+        lambda cache_dir: TileStore(
+            tmp_path, delay=0, session_factory=lambda: session
+        ),
     )
 
     assert download([1], poll_seconds=0.01) == 1
@@ -158,7 +185,9 @@ def test_download_fills_the_cache_and_reports_failures(
 
 def test_main_downloads_all_missions_by_default(monkeypatch):
     calls = []
-    monkeypatch.setattr("orbiter.catalog.download", lambda m: calls.append(m) or 0)
+    monkeypatch.setattr(
+        "orbiter.catalog.download", lambda m: calls.append(m) or 0
+    )
 
     assert main([]) == 0
     assert main(["2", "4"]) == 0

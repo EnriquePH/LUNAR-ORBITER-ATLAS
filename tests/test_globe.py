@@ -1,4 +1,7 @@
-"""Tests for the globe figure, the coordinate helpers and frame projection."""
+"""Tests for the globe figure.
+
+The coordinate helpers and frame projection.
+"""
 
 import math
 import re
@@ -40,9 +43,16 @@ from orbiter.globe import (
 
 
 def _image(
-    frame_id="1041", latitude=3.3, longitude=39.15, altitude_km=256.43, size=(32, 24)
+    frame_id="1041",
+    latitude=3.3,
+    longitude=39.15,
+    altitude_km=256.43,
+    size=(32, 24),
 ):
-    """Build a GlobeImage with a flat grey texture and no spacecraft position."""
+    """Build a GlobeImage with a flat grey texture.
+
+    It has no spacecraft position.
+    """
     return GlobeImage(
         frame_id=frame_id,
         latitude=latitude,
@@ -77,11 +87,15 @@ def test_coordinate_conversion_round_trips(latitude, longitude):
 
 def test_coordinate_conversion_axes_and_wrapped_longitudes():
     assert selenographic_to_cartesian(0, 0) == pytest.approx((1, 0, 0))
-    assert selenographic_to_cartesian(0, 90) == pytest.approx((0, 1, 0), abs=1e-12)
-    assert selenographic_to_cartesian(90, 0) == pytest.approx((0, 0, 1), abs=1e-12)
-    assert cartesian_to_selenographic(*selenographic_to_cartesian(10, 190)) == (
-        pytest.approx((10, -170))
+    assert selenographic_to_cartesian(0, 90) == pytest.approx(
+        (0, 1, 0), abs=1e-12
     )
+    assert selenographic_to_cartesian(90, 0) == pytest.approx(
+        (0, 0, 1), abs=1e-12
+    )
+    assert cartesian_to_selenographic(
+        *selenographic_to_cartesian(10, 190)
+    ) == (pytest.approx((10, -170)))
 
 
 def test_coordinate_conversion_accepts_arrays():
@@ -107,7 +121,10 @@ def test_image_at_finds_the_clicked_patch():
 
 
 def test_image_at_prefers_the_nearest_centre_when_patches_overlap():
-    first, second = _image("1041", longitude=39.0), _image("1042", longitude=41.0)
+    first, second = (
+        _image("1041", longitude=39.0),
+        _image("1042", longitude=41.0),
+    )
     x, y, z = selenographic_to_cartesian(3.3, 40.8)
 
     assert image_at([first, second], x, y, z) is second
@@ -132,21 +149,28 @@ def _without_references(figure):
 
 
 def test_make_globe_without_images_has_only_base_sphere():
-    assert [trace.type for trace in _without_references(make_globe())] == ["surface"]
+    assert [trace.type for trace in _without_references(make_globe())] == [
+        "surface"
+    ]
 
 
 def test_make_globe_marks_poles_and_equator():
     traces = {trace.name: trace for trace in make_globe().data}
 
     assert list(traces["poles"].text) == ["", "", "N", "S"]
-    assert list(traces["poles"].textposition)[2:] == ["top center", "bottom center"]
+    assert list(traces["poles"].textposition)[2:] == [
+        "top center",
+        "bottom center",
+    ]
     assert list(traces["poles"].z) == [1.01, -1.01, 1.18, -1.18]
     assert np.allclose(traces["equator"].z, 0)
     assert traces["equator"].hoverinfo == traces["poles"].hoverinfo == "skip"
 
 
 def test_make_globe_draws_tiles_selection_and_marker():
-    figure = make_globe(_image("1041"), [_image("1042"), _image("1043")], {"1043"})
+    figure = make_globe(
+        _image("1041"), [_image("1042"), _image("1043")], {"1043"}
+    )
 
     base, mosaic, selected, marker = _without_references(figure)
     assert (mosaic.type, selected.type, marker.type) == (
@@ -159,7 +183,8 @@ def test_make_globe_draws_tiles_selection_and_marker():
     assert len(mosaic.x) == 19 * 14
     assert len(mosaic.i) == 2 * 18 * 13
     assert np.asarray(mosaic.intensity).dtype == np.uint8
-    # Dash looks up a clicked point's customdata by index: it must be a list.
+    # Dash looks up a clicked point's customdata by index: it must be a
+    # list.
     serialized = figure.to_plotly_json()["data"][1]
     assert isinstance(serialized["customdata"], (list, tuple))
     assert int(np.max(mosaic.i)) < len(mosaic.x)
@@ -169,7 +194,9 @@ def test_make_globe_draws_tiles_selection_and_marker():
 
 
 def test_make_globe_labels_each_photo_at_its_centre():
-    figure = make_globe(_image("1041"), [_image("1042", latitude=10, longitude=-20)])
+    figure = make_globe(
+        _image("1041"), [_image("1042", latitude=10, longitude=-20)]
+    )
 
     (labels,) = [trace for trace in figure.data if trace.name == "labels"]
     assert list(labels.text) == ["1042", "1041"]
@@ -192,7 +219,9 @@ def test_make_globe_can_hide_labels():
     figure = make_globe(_image("1041"), [_image("1042")], show_labels=False)
 
     assert all(trace.name != "labels" for trace in figure.data)
-    assert figure.data[-1].marker.color == ACCENT  # the selection keeps its dot
+    assert (
+        figure.data[-1].marker.color == ACCENT
+    )  # the selection keeps its dot
 
 
 def test_make_globe_without_photos_has_no_labels():
@@ -266,7 +295,10 @@ def test_tile_textures_respect_the_vertex_budget():
 
 
 def _projected(
-    latitude=3.30, longitude=39.15, altitude_km=256.43, spacecraft=(4.29, 41.17)
+    latitude=3.30,
+    longitude=39.15,
+    altitude_km=256.43,
+    spacecraft=(4.29, 41.17),
 ):
     """Build a projected GlobeImage with a 65 x 55 texture."""
     return GlobeImage(
@@ -281,7 +313,7 @@ def _projected(
 
 
 def _arc_km(first, second):
-    """Return the great-circle distance in km between two unit vectors."""
+    """Return the great-circle distance in km of two unit vectors."""
     return math.acos(np.clip(first @ second, -1, 1)) * MOON_RADIUS_KM
 
 
@@ -290,14 +322,20 @@ def test_projection_matches_the_documented_nadir_footprint():
     points = np.stack([x, y, z], axis=-1)
 
     # 31.6 x 37.4 km from 46 km for the medium-resolution camera.
-    assert _arc_km(points[32, 0], points[32, -1]) == pytest.approx(31.6, abs=0.3)
-    assert _arc_km(points[0, 27], points[-1, 27]) == pytest.approx(37.4, abs=0.3)
+    assert _arc_km(points[32, 0], points[32, -1]) == pytest.approx(
+        31.6, abs=0.3
+    )
+    assert _arc_km(points[0, 27], points[-1, 27]) == pytest.approx(
+        37.4, abs=0.3
+    )
 
 
 def test_projection_centres_an_oblique_frame_on_its_principal_point():
     x, y, z = _patch_grid(_projected(), 1.0)
 
-    latitude, longitude = cartesian_to_selenographic(x[32, 27], y[32, 27], z[32, 27])
+    latitude, longitude = cartesian_to_selenographic(
+        x[32, 27], y[32, 27], z[32, 27]
+    )
     assert (latitude, longitude) == pytest.approx((3.30, 39.15), abs=1e-6)
 
 
@@ -358,7 +396,8 @@ def test_high_resolution_camera_sees_a_narrower_field():
 
 
 def test_oblique_frames_are_level_with_the_horizon_up():
-    camera = frame_camera(_projected(0, 30, 100, (0, 33)))  # looking west
+    # looking west
+    camera = frame_camera(_projected(0, 30, 100, (0, 33)))
     target = np.array(selenographic_to_cartesian(0, 30))
 
     assert camera.up @ target > 0.5
@@ -380,7 +419,9 @@ def test_high_altitude_frames_roll_to_match_a_black_sky():
 
     assert np.allclose(camera.up, rolled.up)
     low = replace(frame, frame_id="low", altitude_km=900.0, texture=texture)
-    assert not np.allclose(frame_camera(low).up, _rolled(frame_camera(low), 1).up)
+    assert not np.allclose(
+        frame_camera(low).up, _rolled(frame_camera(low), 1).up
+    )
 
 
 def test_frame_geometry_measures_the_projected_footprint():
@@ -395,7 +436,8 @@ def test_frame_geometry_measures_the_projected_footprint():
 def test_frame_geometry_counts_only_ground_seen_past_the_limb():
     geometry = frame_geometry(_projected(0, 40, 1500, (0, 0)))
 
-    # Wider than a nadir view, but never more than the visible hemisphere.
+    # Wider than a nadir view, but never more than the visible
+    # hemisphere.
     assert 500 < geometry.width_km < math.pi * MOON_RADIUS_KM
 
 
@@ -409,11 +451,14 @@ def test_frame_geometry_falls_back_to_the_approximate_patch():
 
 def test_implied_emission_matches_the_lpi_value_for_frame_1041():
     # LPI: emission 16.95° for frame 1041.
-    assert implied_emission_angle(_projected()) == pytest.approx(16.95, abs=0.35)
+    assert implied_emission_angle(_projected()) == pytest.approx(
+        16.95, abs=0.35
+    )
 
 
 def test_footprint_outline_of_a_whole_disc_shot_follows_the_limb():
-    # From 5500 km the 80 mm frame is wider than the Moon: no edge touches it.
+    # From 5500 km the 80 mm frame is wider than the Moon: no edge
+    # touches it.
     image = replace(_projected(0, 0, 5500, (0, 0)), texture=np.zeros((65, 55)))
 
     outline = footprint_outline(image)
@@ -422,7 +467,9 @@ def test_footprint_outline_of_a_whole_disc_shot_follows_the_limb():
     limb = math.degrees(math.acos(MOON_RADIUS_KM / (MOON_RADIUS_KM + 5500)))
     distances = [
         math.degrees(
-            math.acos(math.cos(math.radians(lat)) * math.cos(math.radians(lon)))
+            math.acos(
+                math.cos(math.radians(lat)) * math.cos(math.radians(lon))
+            )
         )
         for lat, lon in outline
     ]

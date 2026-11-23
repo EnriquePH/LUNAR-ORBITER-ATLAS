@@ -7,9 +7,13 @@ All notable changes to Lunar Orbiter Atlas are listed here. Versions follow
 
 ### Changed
 
-- Ports per the PROYECTOS convention: app 8202, project site 9202.
+- Code at 79 columns (PEP 8), comments and docstrings at 72; JavaScript,
+  CSS and HTML formatted with Prettier at 79. No change in behaviour.
 
-- The Dash app and the site no longer load Google Fonts (DM Mono from the system).
+- Fixed ports: app 8202, project site 9202.
+
+- The Dash app and the site no longer load Google Fonts (DM Mono from the
+  system).
 
 - Docstrings in NumPy style on every module, class and function, tests included
   (were Google style); Ruff `D` with `convention = "numpy"`.

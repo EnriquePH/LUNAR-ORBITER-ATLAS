@@ -1,4 +1,7 @@
-"""Tests for the translation tables, language normalization and reference tabs."""
+"""Tests for the translation tables.
+
+Language normalization and reference tabs.
+"""
 
 import re
 
@@ -15,7 +18,9 @@ def test_every_language_defines_the_same_keys_and_placeholders():
         assert TEXTS[lang].keys() == spanish.keys(), lang
         for key, text in TEXTS[lang].items():
             placeholders = set(re.findall(r"{(\w+)}", text))
-            assert placeholders == set(re.findall(r"{(\w+)}", spanish[key])), key
+            assert placeholders == set(re.findall(r"{(\w+)}", spanish[key])), (
+                key
+            )
 
 
 def test_every_lpi_error_has_a_translation():
