@@ -30,3 +30,6 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+# Working notes, kept on disk only
+CLAUDE.md
+PLAN.md
